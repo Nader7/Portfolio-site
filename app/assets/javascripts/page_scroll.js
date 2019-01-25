@@ -2,9 +2,10 @@ $(document).ready(function() {
 	$('#fullpage').fullpage({
 		//options here
 		autoScrolling:true,
-		scrollHorizontally: true,
 		navigation: true,
-		
+		loopBottom: true,
+		controlArrows:false,
+		verticalCentered: true,
 	});
 
 	//methods
