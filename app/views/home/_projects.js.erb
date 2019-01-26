@@ -1,0 +1,31 @@
+function init(){
+		$('#fullpage').fullpage({
+		//options here
+		anchors:['title','projects','skills'],
+		lockAnchors:true,
+		autoScrolling:true,
+		navigation: true,
+		loopBottom: true,
+		controlArrows:false,
+		verticalCentered: true,
+	});
+}
+
+
+		console.log("shit");
+		$('#project').html("<%= j render 'project-info' %>")
+		//remembering the active section / slide
+	    var activeSectionIndex = $('.fp-section.active').index();
+	    var activeSlideIndex = $('.fp-section.active').find('.slide.active').index();
+
+	    $.fn.fullpage.destroy('all');
+
+	    //setting the active section as before
+	    $('.section').eq(activeSectionIndex).addClass('active');
+
+	    //were we in a slide? Adding the active state again
+	    if(activeSlideIndex > -1){
+	        $('.section.active').find('.slide').eq(activeSlideIndex).addClass('active');
+	    }
+	    init();
+	    fullpage_api.moveSlideRight();

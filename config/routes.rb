@@ -1,5 +1,5 @@
 Rails.application.routes.draw do
-  get 'home/index'
-  root 'home#index'
-  # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
+  root "home#show", page: "home"
+  get "home/:page" => "home#show"
+  get 'projects' => "home#projects" #links to js.erb file
 end

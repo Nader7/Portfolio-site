@@ -1,4 +1,5 @@
 class HomeController < ApplicationController
-  def index
+  def show
+  	render template: "home/#{params[:page]}"
   end
 end

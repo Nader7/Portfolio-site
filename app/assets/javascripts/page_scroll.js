@@ -9,7 +9,6 @@ $(document).ready(function() {
 		controlArrows:false,
 		verticalCentered: true,
 	});
-
 	//methods
 	$.fn.fullpage.setAllowScrolling(true);
 
