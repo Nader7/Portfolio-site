@@ -1,32 +1,28 @@
-function init(){
-		$('#fullpage').fullpage({
-		//options here
-		anchors:['title','projects','skills'],
-		lockAnchors:true,
-		autoScrolling:true,
-		navigation: true,
-		loopBottom: true,
-		controlArrows:false,
-		verticalCentered: true,
-	});
-}
-
-
-		$('#project').html("<%= j render 'project-info' %>")
+$('#project').html("<%= j render :partial => params[:project], :layout => 'layouts/project' %>")
 		
-		//store active section
-	    var activeSectionIndex = $('.fp-section.active').index();
-	    var activeSlideIndex = $('.fp-section.active').find('.slide.active').index();
+//store current session
+var activeSectionIndex = $('.fp-section.active').index();
+var activeSlideIndex = $('.fp-section.active').find('.slide.active').index();
 
-	    $.fn.fullpage.destroy('all');
+$.fn.fullpage.destroy('all');
 
-	    //setting the active section as before
-	    $('.section').eq(activeSectionIndex).addClass('active');
+//restore session
+$('.section').eq(activeSectionIndex).addClass('active');
 
-	    //were we in a slide? Adding the active state again
-	    if(activeSlideIndex > -1){
-	        $('.section.active').find('.slide').eq(activeSlideIndex).addClass('active');
-	    }
+//restore current slide (if on one)
+if(activeSlideIndex > -1)
+	$('.section.active').find('.slide').eq(activeSlideIndex).addClass('active');
 
-	    init();
-	    fullpage_api.moveSlideRight();
+//re-enable fullpage
+$('#fullpage').fullpage({
+	anchors:['title','projects','skills'],
+	lockAnchors:true,
+	autoScrolling:true,
+	navigation: true,
+	loopBottom: true,
+	controlArrows:false,
+	verticalCentered: true,
+});
+
+//move to new slide
+fullpage_api.moveSlideRight();

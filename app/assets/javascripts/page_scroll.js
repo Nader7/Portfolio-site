@@ -1,6 +1,5 @@
 $(document).ready(function() {
 	$('#fullpage').fullpage({
-		//options here
 		anchors:['title','projects','skills'],
 		lockAnchors:true,
 		autoScrolling:true,
@@ -9,16 +8,15 @@ $(document).ready(function() {
 		controlArrows:false,
 		verticalCentered: true,
 	});
-	//methods
+	
 	$.fn.fullpage.setAllowScrolling(true);
 
-	$('#bionic').click(function(){
-    	fullpage_api.moveTo('projects',1);
-	});
-	$('#energy').click(function(){
-    	fullpage_api.moveTo('projects',2);
-	});
-	$('#game').click(function(){
-    	fullpage_api.moveTo('projects',3);
+	$(document).on('click', '#back', function(){ //for the project partial back button
+    	var slide = $('.fp-section.active').find('.slide.active');
+    	$.fn.fullpage.moveSlideLeft();
+    	
+    	setTimeout(function(){
+        	slide.remove();
+    	},700);
 	});
 });
