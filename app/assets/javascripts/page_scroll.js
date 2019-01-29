@@ -7,6 +7,7 @@ $(document).ready(function() {
 		loopBottom: true,
 		controlArrows:false,
 		verticalCentered: true,
+		licenseKey: 'OPEN-SOURCE-GPLV3-LICENSE'
 	});
 	
 	$.fn.fullpage.setAllowScrolling(true);
