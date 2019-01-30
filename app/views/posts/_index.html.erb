@@ -1,4 +1,33 @@
-<p>
-	Database Index
-</p>
+<div class="row">
+	<div class="col-lg-12 text-center">
+		<h1>Listing posts</h1>
+	</div>
+</div>
 
+<div class="row">
+	<div class="col-lg-12">
+		<div id="new"></div>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-lg-12">
+		<%= link_to 'New post', new_post_path, remote:true %>
+		<div id="posts_list">
+			<%= render 'posts_list' %>
+		</div>
+	</div>
+</div>
+
+<br /><br />
+
+<div class="row">
+	<div class="col-lg-6 text-center">
+		<div id="show">
+			<div id="show"></div>
+		</div>
+	</div>
+	<div class="col-lg-6 text-center">
+		<div id="edit"></div>
+	</div>
+</div>

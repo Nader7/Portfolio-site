@@ -1,0 +1,7 @@
+$('#<%=action%>').html('<%= j render :partial => action %>');
+
+if ('<%= @hide %>' == 'true'){
+	$('#new').empty();
+	$('#show').empty();
+	$('#edit').empty();
+}

@@ -1,49 +1,56 @@
 class PostsController < ApplicationController
 	def index
 		@posts = Post.all
+		render 'home/projects.js.erb'
 	end
 
 	def show
 		@post = Post.find(params[:id])
+		render 'load_data.js.erb', locals: {post: @post, action: "show"}
 	end
 
 	def new
 		@post = Post.new
+		render 'load_data.js.erb', locals: {action: "new"}
 	end
 	
 	def edit
 		@post = Post.find(params[:id])
+		render 'load_data.js.erb', locals: {post: @post, action: "edit"}
 	end
 
 	def create
 		@post = Post.new(post_params)
 		if @post.save
-			redirect_to @post
+			update_table(true)
 		else
-			render 'new'
+			render 'load_data.js.erb', locals: {action: "new"}
 		end
-		#render partial: 'show', locals: {post: @post}, remote:true
 	end
 	
 	def update
 		@post = Post.find(params[:id])
 
 		if @post.update(post_params)
-			redirect_to @post
+			update_table(true)
 		else
-			render 'edit'
+			render 'load_data.js.erb', locals: {action: "edit"}
 		end
 	end
 
 	def destroy
 		@post = Post.find(params[:id])
 		@post.destroy
-
-		redirect_to posts_path
+		update_table(false)
 	end
 
 	private
-	  def post_params
-	    params.require(:post).permit(:title, :text)
-	  end
+		def post_params
+			params.require(:post).permit(:title, :text)
+		end
+
+		def update_table(hide_input)
+			@posts = Post.all
+			render 'load_data.js.erb', locals: {action: "posts_list", posts: @posts, hide: hide_input}
+		end
 end
