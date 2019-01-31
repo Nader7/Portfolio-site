@@ -22,7 +22,7 @@ class PostsController < ApplicationController
 	def create
 		@post = Post.new(post_params)
 		if @post.save
-			update_table(true)
+			update_table("new")
 		else
 			render 'load_data.js.erb', locals: {action: "new"}
 		end
@@ -32,7 +32,7 @@ class PostsController < ApplicationController
 		@post = Post.find(params[:id])
 
 		if @post.update(post_params)
-			update_table(true)
+			update_table("edit")
 		else
 			render 'load_data.js.erb', locals: {action: "edit"}
 		end
@@ -41,7 +41,7 @@ class PostsController < ApplicationController
 	def destroy
 		@post = Post.find(params[:id])
 		@post.destroy
-		update_table(false)
+		update_table()
 	end
 
 	private
@@ -49,7 +49,7 @@ class PostsController < ApplicationController
 			params.require(:post).permit(:title, :text)
 		end
 
-		def update_table(hide_input) # local vars autimatically passed to load_data.js
+		def update_table(hide_input = nil) # local vars autimatically passed to load_data.js
 			@hide = hide_input
 			@posts = Post.all
 			render 'load_data.js.erb', locals: {action: "posts_list"}

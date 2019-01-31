@@ -1,7 +1,15 @@
-if ('<%= @hide %>' == 'true'){
-	$('#new').empty();
-	$('#show').empty();
-	$('#edit').empty();
+switch('<%= @hide %>'){
+	case "new":
+		$('#new').empty();
+		$('#new_post').show();
+		break;
+	case "edit":
+		$('#edit').empty();
+		break;
+	default:
 }
 
-$('#<%=action%>').html('<%= j render :partial => action %>');
+if('<%=action%>' == "new")
+	$('#new_post').hide();
+
+$('#<%=action%>').html('<%= j render :partial => action, :layout => false %>');
