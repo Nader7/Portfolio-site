@@ -49,8 +49,9 @@ class PostsController < ApplicationController
 			params.require(:post).permit(:title, :text)
 		end
 
-		def update_table(hide_input)
+		def update_table(hide_input) # local vars autimatically passed to load_data.js
+			@hide = hide_input
 			@posts = Post.all
-			render 'load_data.js.erb', locals: {action: "posts_list", posts: @posts, hide: hide_input}
+			render 'load_data.js.erb', locals: {action: "posts_list"}
 		end
 end
