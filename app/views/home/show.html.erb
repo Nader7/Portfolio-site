@@ -28,55 +28,54 @@
 				</div>
 				
 				<br /><br />
-
 				<div class="row vertical-align">
 					<div class="col-lg-4 text-right">
-						<%= image_tag("home/bionic_placeholder", :width => 225, :class => "image")%>
+						<%= link_to image_tag("home/data", :width => 225, :class => "image", alt: "database"), posts_path(:project => "posts/index"), remote:true%>
 					</div>
-					<div class="col-lg-8 ">
+					<div class="col-lg-8">
 						<div>
-							<%= link_to 'Bionic Vision Simulator', 
-								projects_path(:project => "bionic"), remote:true %>
-							<p>[Insert Summary]</p>
+							<%= link_to 'Database Management (Demo!)', 
+								posts_path(:project => "posts/index"), remote:true %>
+							<p>A database managment interface. Click for a live demo!</p>
 						</div>
 					</div>
 				</div>
 				<br /><br />
 				<div class="row vertical-align">
 					<div class="col-lg-4 text-right">
-						<%= image_tag("home/bionic_placeholder", :width => 225, :class => "image")%>
+						<%= link_to image_tag("home/bionic", :width => 225, :class => "image", alt: "bionic"), "/assets/home/bionic.png", target: :_blank%>
+					</div>
+					<div class="col-lg-8 ">
+						<div>
+							<%= link_to 'Bionic Vision Simulator', 
+								projects_path(:project => "bionic"), remote:true %>
+							<p>A virtual reality program which simulates the functionality of a prosthetic being developed by Bionic Vision Australia, developed for research purposes</p>
+						</div>
+					</div>
+				</div>
+				<br /><br />
+				<div class="row vertical-align">
+					<div class="col-lg-4 text-right">
+						<%= link_to image_tag("home/energy", :width => 225, :class => "image", alt: "energy"), "/assets/home/energy.png", target: :_blank%>
 					</div>
 					<div class="col-lg-8">
 						<div>
 							<%= link_to 'Home Energy Trading System', 
 								projects_path(:project => "energy"), remote:true %>
-							<p>[Insert Summary]</p>
+							<p>A multi intelligent agent system which autonomously calculates hourly energy needs and negotiates price based on a budget</p>
 						</div>
 					</div>
 				</div> 
 				<br / ><br />
 				<div class="row vertical-align">
 					<div class="col-lg-4 text-right">
-						<%= image_tag("home/bionic_placeholder", :width => 225, :class => "image")%>
+						<%= link_to image_tag("home/zorkish", :width => 225, :class => "image", alt: "zorkish"), "/assets/home/zorkish.png", target: :_blank%>
 					</div>
 					<div class="col-lg-8">
 						<div>
 							<%= link_to 'Text Adventure Game', 
 								projects_path(:project => "game"), remote:true %>
-							<p>[Insert Summary]</p>
-						</div>
-					</div>
-				</div>
-				<br /><br />
-				<div class="row vertical-align">
-					<div class="col-lg-4 text-right">
-						<%= image_tag("home/bionic_placeholder", :width => 225, :class => "image")%>
-					</div>
-					<div class="col-lg-8">
-						<div>
-							<%= link_to 'Database Management', 
-								posts_path(:project => "posts/index"), remote:true %>
-							<p>[Insert Summary]</p>
+							<p>A Zork like game built in c++ without the use of libraries</p>
 						</div>
 					</div>
 				</div>
