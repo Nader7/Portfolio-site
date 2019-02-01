@@ -12,12 +12,19 @@ $(document).ready(function() {
 	
 	$.fn.fullpage.setAllowScrolling(true);
 
-	$(document).on('click', '#back', function(){ //for the project partial back button
+	$(document).on('click', '#back', function(){ //for the project layout back button
     	var slide = $('.fp-section.active').find('.slide.active');
     	$.fn.fullpage.moveSlideLeft();
     	
     	setTimeout(function(){
         	slide.remove();
     	},700);
+	});
+
+	$(document).on('click', '#back_title', function(){
+		$.fn.fullpage.moveSlideLeft();
+	});
+	$(document).on('click', '#features', function(){
+		$.fn.fullpage.moveSlideRight();
 	});
 });
