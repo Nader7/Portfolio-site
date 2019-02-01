@@ -24,6 +24,7 @@ $(document).ready(function() {
 	$(document).on('click', '#back_title', function(){
 		$.fn.fullpage.moveSlideLeft();
 	});
+	
 	$(document).on('click', '#features', function(){
 		$.fn.fullpage.moveSlideRight();
 	});
