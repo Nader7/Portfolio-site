@@ -3,7 +3,11 @@
 // You can use Sass (SCSS) here: http://sass-lang.com
 @font-face{
 	font-family: 'mosk';
-	src: url('mosk/Mosk Bold 700.ttf') format('truetype');
+	src: url('Mosk Bold 700.ttf') format('truetype');
+}
+@font-face{
+	font-family: 'adam';
+	src: url('Archive-Regular.ttf') format('truetype');
 }
 #section1 { 
   background-image: url(home/title_background.png);
@@ -15,15 +19,23 @@
 }
 #title_name{
 	position: relative;
-	bottom: 18%;
-	left: 33%;
+	text-align: center;
+	bottom: 2.7vmin;
+	left: 15.75%;
 	font-size: 6.4vw;
 }
 #title_skill{
 	position: relative;
-	bottom: 10%;
-	left: 39%;
+	text-align: center;
+	bottom: 1.1vmin;
+	left: 19%;
 	font-size: 3vw;
+}
+.notification{
+	position: relative;
+	top: 6.5%;
+	text-align: center;
+	font-size: 1.25vw;
 }
 #title_name_background{
 	position: absolute;
@@ -57,12 +69,34 @@
 }
 #features{
 	cursor: pointer;
+	color: #110887;
 }
-.notification{
-	position: relative;
-	bottom: 3%;
+.slide_title{
 	text-align: center;
-	font-size: 1.25vw;
+	color: white;
+	font-family: 'adam';
+	font-size: 3vw;
+}
+.features_text{
+	color: white;
+	font-size: 1.2vw;
+}
+.readable_text{
+	color: white;
+	font-size: 0.9vw;
+}
+.back_button{
+	color: white;
+	font-size: 1.5vw;
+	font-family: 'adam';
+	cursor: pointer;
+}
+.project_link{
+	font-size: 1.75vw;
+	color: white;
+}
+.project_image{
+	border-radius: 5px;
 }
 .vertical-align {
     display: flex;

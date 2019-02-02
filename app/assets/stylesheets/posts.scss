@@ -6,9 +6,10 @@ textarea{
 	vertical-align: top;
 }
 #error_title{
-	color: red;
+	color: #aa0d0d;
 }
 #error_msg{ /* fixes formatting in column */
-	white-space: nowrap; 
-	float:left;
+	white-space: nowrap;
+	color: white;
+	float: left;
 }

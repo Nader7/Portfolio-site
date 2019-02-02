@@ -14,7 +14,7 @@ $(document).ready(function() {
 	
 	$.fn.fullpage.setAllowScrolling(true);
 
-	$(document).on('click', '#back', function(){ //for the project layout back button
+	$(document).on('click', '#project_back', function(){ //for the project layout back button
     	var slide = $('.fp-section.active').find('.slide.active');
     	$.fn.fullpage.moveSlideLeft();
     	

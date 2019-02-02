@@ -12,8 +12,8 @@
 			
 
 				<div id="notification_background">
-					<h3 class="notification">Hey! Welcome to my site. It's currently under construction.</h3>
-					<h3 id="features" class="notification">Click here to view upcoming features</h3>
+					<p class="notification">Hey! Welcome to my site. It's currently under construction.</p>
+					<p id="features" class="notification">Click here to view upcoming features</p>
 				</div>
 			</div>
 		</div>
@@ -24,60 +24,59 @@
 		<div class="slide">
 			<div class="container">
 				<div class="row">
-					<div class="col-lg-12 text-center">
-						<h1> Notable Projects </h1>
+					<div class="col-lg-12">
+						<h1 class="slide_title"> Notable Projects </h1>
 					</div>
 				</div>
 				
-				<br /><br />
+				<br /><br /><br />
 				<div class="row vertical-align">
 					<div class="col-lg-4 text-right">
-						<%= link_to image_tag("home/data_thumb", width: "225", alt: "database"), posts_path(:project => "posts/index"), remote:true%>
+						<%= link_to image_tag("home/data_thumb", width: "225", alt: "database", class: "project_image"), posts_path(:project => "posts/index"), remote:true%>
 					</div>
 					<div class="col-lg-8">
 						<div>
-							<%= link_to 'Database Management (Demo!)', 
-								posts_path(:project => "posts/index"), remote:true %>
-							<p>A database managment interface. Click for a live demo!</p>
+							<%= link_to 'Database Management (Demo!)', posts_path(:project => "posts/index"), class:"project_link", remote:true %>
+							<p class="readable_text">A database managment interface. Click for a live demo!</p>
 						</div>
 					</div>
 				</div>
 				<br /><br />
 				<div class="row vertical-align">
 					<div class="col-lg-4 text-right">
-						<%= link_to image_tag("home/bionic_thumb", width: "225", alt: "bionic"), "/assets/home/bionic.png", target: :_blank%>
+						<%= link_to image_tag("home/bionic_thumb", width: "225", alt: "bionic", class: "project_image"), "/assets/home/bionic.png", target: :_blank%>
 					</div>
 					<div class="col-lg-8 ">
 						<div>
 							<%= link_to 'Bionic Vision Simulator', 
-								projects_path(:project => "bionic"), remote:true %>
-							<p>A virtual reality program which simulates the functionality of a prosthetic being developed by Bionic Vision Australia, developed for research purposes</p>
+								projects_path(:project => "bionic"), class:"project_link", remote:true %>
+							<p class="readable_text">A virtual reality program which simulates the functionality of a prosthetic being developed by Bionic Vision Australia, developed for research purposes</p>
 						</div>
 					</div>
 				</div>
 				<br /><br />
 				<div class="row vertical-align">
 					<div class="col-lg-4 text-right">
-						<%= link_to image_tag("home/energy_thumb", width: "225", alt: "energy"), "/assets/home/energy.png", target: :_blank%>
+						<%= link_to image_tag("home/energy_thumb", width: "225", alt: "energy", class: "project_image"), "/assets/home/energy.png", target: :_blank%>
 					</div>
 					<div class="col-lg-8">
 						<div>
 							<%= link_to 'Home Energy Trading System', 
-								projects_path(:project => "energy"), remote:true %>
-							<p>A multi intelligent agent system which autonomously calculates hourly energy needs and negotiates price based on a budget</p>
+								projects_path(:project => "energy"), class:"project_link", remote:true %>
+							<p class="readable_text">A multi intelligent agent system which autonomously calculates hourly energy needs and negotiates price based on a budget</p>
 						</div>
 					</div>
 				</div> 
 				<br / ><br />
 				<div class="row vertical-align">
 					<div class="col-lg-4 text-right">
-						<%= link_to image_tag("home/zorkish_thumb", width: "225", alt: "zorkish"), "/assets/home/zorkish.png", target: :_blank%>
+						<%= link_to image_tag("home/zorkish_thumb", width: "225", alt: "zorkish", class: "project_image"), "/assets/home/zorkish.png", target: :_blank%>
 					</div>
 					<div class="col-lg-8">
 						<div>
 							<%= link_to 'Text Adventure Game', 
-								projects_path(:project => "game"), remote:true %>
-							<p>A Zork like game built in c++ without the use of libraries</p>
+								projects_path(:project => "game"), class:"project_link", remote:true %>
+							<p class="readable_text">A Zork like game built in c++ without the use of libraries</p>
 						</div>
 					</div>
 				</div>
