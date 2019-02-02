@@ -3,7 +3,7 @@
 // You can use Sass (SCSS) here: http://sass-lang.com
 @font-face{
 	font-family: 'mosk';
-	src: url('mosk/Mosk_Medium_500.ttf') format('truetype');
+	src: url('mosk/Mosk Bold 700.ttf') format('truetype');
 }
 #section1 { 
   background-image: url(home/title_background.png);
@@ -14,16 +14,60 @@
 	color: white;
 }
 #title_name{
-	font-size: 100px;
+	position: relative;
+	bottom: 18%;
+	left: 33%;
+	font-size: 6.4vw;
 }
 #title_skill{
-	font-size: 80px;
+	position: relative;
+	bottom: 10%;
+	left: 39%;
+	font-size: 3vw;
+}
+#title_name_background{
+	position: absolute;
+	width: 60vw;
+    height: 7.2vw;
+    top: 30vh;
+    left: 0vw;
+    border-radius: 15px;
+    background: rgba(32,55,196,0.85);
+    float: left;
+}
+#title_skill_background{
+	position: absolute;
+	width: 40vw;
+    height: 4.8vw;
+    border-radius: 15px;
+    top: 50vh;
+    left: 0vw;
+    background: rgba(42,114,245,0.85);
+    float: left;
+}
+#notification_background{
+	position: absolute;
+	width: 30vw;
+    height: 6.8vw;
+    border-radius: 15px;
+    top: 70vh;
+    left: 35vw;
+    background: rgba(209,11,11,0.85);
+    float: left;
+}
+#features{
+	cursor: pointer;
+}
+.notification{
+	position: relative;
+	bottom: 3%;
+	text-align: center;
+	font-size: 1.25vw;
 }
 .vertical-align {
     display: flex;
     align-items: center;
 }
-
 .button{
-	cursor:pointer;
+	cursor: pointer;
 }

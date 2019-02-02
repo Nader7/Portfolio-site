@@ -1,7 +1,7 @@
 $(document).ready(function() {
 	$('#fullpage').fullpage({
 		anchors:['title','projects','skills'],
-		sectionsColor: ['', '#919298', '#176fdc'],
+		sectionsColor: ['', '#0097f3', '#176fdc'],
 		lockAnchors:true,
 		autoScrolling:true,
 		navigation: true,
