@@ -2,10 +2,12 @@
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com
 body { 
-  background-image: url(home/test.jpg);
+  background-image: url(home/title_background.png);
   background-position: fixed;
 }
-
+#title_name{
+	color:white;
+}
 .vertical-align {
     display: flex;
     align-items: center;

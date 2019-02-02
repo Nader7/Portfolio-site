@@ -7,7 +7,7 @@ $(document).ready(function() {
 		loopBottom: true,
 		controlArrows:false,
 		verticalCentered: true,
-		licenseKey: 'OPEN-SOURCE-GPLV3-LICENSE'
+		licenseKey: 'AA5B0793-878946C9-AD56A913-DD44D5FC'
 	});
 	
 	$.fn.fullpage.setAllowScrolling(true);
