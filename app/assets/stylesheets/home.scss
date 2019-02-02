@@ -1,12 +1,23 @@
 // Place all the styles related to the Home controller here.
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com
-body { 
+@font-face{
+	font-family: 'mosk';
+	src: url('mosk/Mosk_Medium_500.ttf') format('truetype');
+}
+#section1 { 
   background-image: url(home/title_background.png);
   background-position: fixed;
 }
+#title_section{
+	font-family: 'mosk';
+	color: white;
+}
 #title_name{
-	color:white;
+	font-size: 100px;
+}
+#title_skill{
+	font-size: 80px;
 }
 .vertical-align {
     display: flex;

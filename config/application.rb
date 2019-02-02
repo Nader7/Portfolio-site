@@ -12,9 +12,11 @@ module Portfolio
     
     #Overrides field_with_error div tags when form contains errors
     config.load_defaults 5.2
-	config.action_view.field_error_proc = Proc.new { |html_tag, instance| 
-	  html_tag
-	}
+  	config.action_view.field_error_proc = Proc.new { |html_tag, instance| 
+  	 html_tag }
+
+    config.assets.paths << Rails.root.join('app', 'assets', 'fonts')
+    config.assets.precompile << /\.(?:svg|eot|woff|ttf)$/
 
     # Settings in config/environments/* take precedence over those specified here.
     # Application configuration can go into files in config/initializers
