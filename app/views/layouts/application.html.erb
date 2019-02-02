@@ -4,11 +4,12 @@
     <title>Portfolio</title>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-    <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload', async: true %>
-    <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload', defer: true %>
   </head>
 
   <body>
     <%= yield %>
   </body>
+  
+  <%= stylesheet_link_tag 'application', media: 'all', 'data-turbolinks-track': 'reload', async: true, 'data-turbolinks-suppress-warning': true %>
+  <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload', async: true, 'data-turbolinks-suppress-warning': true %>
 </html>
