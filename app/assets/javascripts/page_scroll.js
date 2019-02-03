@@ -1,7 +1,7 @@
 $(document).ready(function() {
 	$('#fullpage').fullpage({
 		anchors:['title','projects','skills'],
-		sectionsColor: ['', '#0097f3', '#176fdc'],
+		sectionsColor: ['', '#3a3a3a', '#002a5e'],
 		lockAnchors:true,
 		autoScrolling:true,
 		loopBottom: true,
@@ -9,7 +9,7 @@ $(document).ready(function() {
 		verticalCentered: true,
 		scrollingSpeed: 850,
 		navigation: true,
-		navigationTooltips: ['Home', 'Projects', 'Skills'],
+		navigationTooltips: ['Title', 'Projects', 'Skills'],
 		showActiveTooltip: true,
 		responsiveSlides: true,
 		licenseKey: 'AA5B0793-878946C9-AD56A913-DD44D5FC'

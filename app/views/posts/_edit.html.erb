@@ -1,9 +1,9 @@
 <%= form_with(model: @post, remote: true) do |form| %>
 	<%= render 'error_check' %>
 	<%= form.label :title, class: "readable_text" %><br />
-	<%= form.text_field :title %><br />
+	<%= form.text_field :title, id: "edit_title" %><br />
 
 	<%= form.label :text, class: "readable_text" %><br />
-	<%= form.text_area :text %><br /><br />
+	<%= form.text_area :text, id: "edit_text" %><br /><br />
 	<%= form.submit %>
 <% end %>

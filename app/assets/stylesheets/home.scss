@@ -2,10 +2,6 @@
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com
 @font-face{
-	font-family: 'mosk';
-	src: url('Mosk Bold 700.ttf') format('truetype');
-}
-@font-face{
 	font-family: 'adam';
 	src: url('Archive-Regular.ttf') format('truetype');
 }
@@ -18,27 +14,6 @@
   background-image: url(home/title_background.webp);
   background-position: fixed;
 }
-/*
-#nav_bar{
-	position: fixed;
-	width: 35vw;
-    height: 3.5vw;
-    border-radius: 15px;
-    top: 2vh;
-    right: 0vw;
-    background: rgba(209,11,11,0.7);
-    z-index: 999;
-}
-
-#nav_links{
-	position: relative;
-	top: 7%;
-	left: 2.6%;
-	font-size: 2.2vw;
-	font-family: 'adam';
-	color: white;
-} 
-*/
 #title_section{
 	font-family: 'nexa';
 	color: white;
@@ -52,7 +27,7 @@
 #title_skill{
 	position: absolute;
 	top: 40vh;
-	left:0vw;
+	left:0.3vw;
 	font-size: 4vw;
 }
 .notification{
@@ -61,33 +36,11 @@
 	text-align: center;
 	font-size: 1.25vw;
 }
-
-/* old title style
-#title_name_background{
-	position: absolute;
-	width: 55vw;
-    height: 7.2vw;
-    top: 30vh;
-    left: 0vw;
-    border-radius: 15px;
-    background: rgba(32,55,196,0.85);
-}
-#title_skill_background{
-	position: absolute;
-	width: 40vw;
-    height: 4.8vw;
-    border-radius: 15px;
-    top: 50vh;
-    left: 0vw;
-    background: rgba(42,114,245,0.85);
-}
-*/
 #title_down{
 	position: absolute;
 	width: 5vw;
 	left: 47.5vw;
 	bottom: 3vh;
-	cursor: pointer;
 	z-index: 99;
 }
 #notification_background{
@@ -95,9 +48,28 @@
 	width: 30vw;
     height: 6.8vw;
     border-radius: 15px;
-    top: 65vh;
+    top: 60vh;
     left: 35vw;
     background: rgba(209,11,11,0.85);
+}
+#git_text_background{
+	position: absolute;
+	width: 30vw;
+    height: 4vw;
+    border-radius: 15px;
+    top: 78vh;
+    left: 35vw;
+    background: rgba(10,57,115,0.85);
+}
+.git_text{
+	position: relative;
+	top: 25%;
+	text-align: center;
+	font-size: 1.25vw;
+}
+#git_link{
+	text-decoration: none;
+	color: #110887;
 }
 #features{
 	cursor: pointer;
@@ -113,6 +85,7 @@
 	color: white;
 	font-size: 1.2vw;
 }
+
 .readable_text{
 	color: white;
 	font-size: 0.9vw;

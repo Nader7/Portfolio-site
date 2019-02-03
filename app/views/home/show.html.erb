@@ -9,10 +9,15 @@
 					<p class="notification">Hey, welcome to my site, it's currently under construction.</p>
 					<p id="features" class="notification">Click here to view upcoming features</p>
 				</div>
+				<div id="git_text_background">
+					<div class ="git_text">View the source code on GitHub
+						<%= link_to " here", "https://github.com/Nader7/Portfolio-site", class: "git_text", id: "git_link", target: :_blank%>
+					</div>
+				</div>
 			</div>
 		</div>
 		<%= render partial: 'upcoming_features'%>
-		<%= image_tag "home/down_arrow", alt: "arrow", id: "title_down"%>
+		<%= image_tag "home/down_arrow", alt: "arrow", id: "title_down", class: "button"%>
 	</div>
 	
 	<div id="section2" class="section">
@@ -32,7 +37,7 @@
 					<div class="col-lg-8">
 						<div>
 							<%= link_to 'Database Management (Demo)', posts_path(:project => "posts/index"), class:"project_link", remote:true %>
-							<p class="readable_text">A database managment interface. Click for a live demo!</p>
+							<p class="readable_text">A database managment interface. Click above for a live demo!</p>
 						</div>
 					</div>
 				</div>
