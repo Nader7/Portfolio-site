@@ -4,11 +4,14 @@ $(document).ready(function() {
 		sectionsColor: ['', '#0097f3', '#176fdc'],
 		lockAnchors:true,
 		autoScrolling:true,
-		navigation: true,
 		loopBottom: true,
 		controlArrows:false,
 		verticalCentered: true,
 		scrollingSpeed: 850,
+		navigation: true,
+		navigationTooltips: ['Home', 'Projects', 'Skills'],
+		showActiveTooltip: true,
+		responsiveSlides: true,
 		licenseKey: 'AA5B0793-878946C9-AD56A913-DD44D5FC'
 	});
 	
@@ -28,6 +31,10 @@ $(document).ready(function() {
 	});
 	
 	$(document).on('click', '#features', function(){
+		$.fn.fullpage.moveSlideRight();
+	});
+
+	$(document).on('click', '#home_nav', function(){
 		$.fn.fullpage.moveSlideRight();
 	});
 });

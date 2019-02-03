@@ -9,27 +9,51 @@
 	font-family: 'adam';
 	src: url('Archive-Regular.ttf') format('truetype');
 }
+@font-face{
+	font-family: 'nexa';
+	src: url('NexaDemo-Bold.otf') format('truetype');
+}
+
 #section1 { 
   background-image: url(home/title_background.webp);
   background-position: fixed;
 }
+/*
+#nav_bar{
+	position: fixed;
+	width: 35vw;
+    height: 3.5vw;
+    border-radius: 15px;
+    top: 2vh;
+    right: 0vw;
+    background: rgba(209,11,11,0.7);
+    z-index: 999;
+}
+
+#nav_links{
+	position: relative;
+	top: 7%;
+	left: 2.6%;
+	font-size: 2.2vw;
+	font-family: 'adam';
+	color: white;
+} 
+*/
 #title_section{
-	font-family: 'mosk';
+	font-family: 'nexa';
 	color: white;
 }
 #title_name{
-	position: relative;
-	text-align: center;
-	bottom: 2.7vmin;
-	left: 15.75%;
-	font-size: 6.4vw;
+	position: absolute;
+	top: 20vh;
+	left:0vw;
+	font-size: 8vw;
 }
 #title_skill{
-	position: relative;
-	text-align: center;
-	bottom: 1.1vmin;
-	left: 19%;
-	font-size: 3vw;
+	position: absolute;
+	top: 40vh;
+	left:0vw;
+	font-size: 4vw;
 }
 .notification{
 	position: relative;
@@ -37,15 +61,16 @@
 	text-align: center;
 	font-size: 1.25vw;
 }
+
+/* old title style
 #title_name_background{
 	position: absolute;
-	width: 60vw;
+	width: 55vw;
     height: 7.2vw;
     top: 30vh;
     left: 0vw;
     border-radius: 15px;
     background: rgba(32,55,196,0.85);
-    float: left;
 }
 #title_skill_background{
 	position: absolute;
@@ -55,8 +80,9 @@
     top: 50vh;
     left: 0vw;
     background: rgba(42,114,245,0.85);
-    float: left;
 }
+*/
+
 #notification_background{
 	position: absolute;
 	width: 30vw;
@@ -65,7 +91,6 @@
     top: 70vh;
     left: 35vw;
     background: rgba(209,11,11,0.85);
-    float: left;
 }
 #features{
 	cursor: pointer;
@@ -104,4 +129,7 @@
 }
 .button{
 	cursor: pointer;
+}
+#fp-nav ul li a span{ 
+	background-color: white !important;
 }
