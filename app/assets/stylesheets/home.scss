@@ -82,13 +82,20 @@
     background: rgba(42,114,245,0.85);
 }
 */
-
+#title_down{
+	position: absolute;
+	width: 5vw;
+	left: 47.5vw;
+	bottom: 3vh;
+	cursor: pointer;
+	z-index: 99;
+}
 #notification_background{
 	position: absolute;
 	width: 30vw;
     height: 6.8vw;
     border-radius: 15px;
-    top: 70vh;
+    top: 65vh;
     left: 35vw;
     background: rgba(209,11,11,0.85);
 }

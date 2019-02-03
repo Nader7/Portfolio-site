@@ -6,13 +6,13 @@
 				<h2 id="title_skill">Software Engineer</h2>
 
 				<div id="notification_background">
-					<p class="notification">Hey! Welcome to my site. It's currently under construction.</p>
+					<p class="notification">Hey, welcome to my site, it's currently under construction.</p>
 					<p id="features" class="notification">Click here to view upcoming features</p>
 				</div>
-				
 			</div>
 		</div>
 		<%= render partial: 'upcoming_features'%>
+		<%= image_tag "home/down_arrow", alt: "arrow", id: "title_down"%>
 	</div>
 	
 	<div id="section2" class="section">
@@ -31,7 +31,7 @@
 					</div>
 					<div class="col-lg-8">
 						<div>
-							<%= link_to 'Database Management (Demo!)', posts_path(:project => "posts/index"), class:"project_link", remote:true %>
+							<%= link_to 'Database Management (Demo)', posts_path(:project => "posts/index"), class:"project_link", remote:true %>
 							<p class="readable_text">A database managment interface. Click for a live demo!</p>
 						</div>
 					</div>
@@ -45,7 +45,7 @@
 						<div>
 							<%= link_to 'Bionic Vision Simulator', 
 								projects_path(:project => "bionic"), class:"project_link", remote:true %>
-							<p class="readable_text">A virtual reality program which simulates the functionality of a prosthetic being developed by Bionic Vision Australia, developed for research purposes</p>
+							<p class="readable_text">A virtual reality program which simulates the functionality of an implant being developed by Bionic Vision Australia. We created it to aid in research for finding the ideal image processing algorithms for the implant. Click above for further info!</p>
 						</div>
 					</div>
 				</div>
@@ -58,7 +58,7 @@
 						<div>
 							<%= link_to 'Home Energy Trading System', 
 								projects_path(:project => "energy"), class:"project_link", remote:true %>
-							<p class="readable_text">A multi intelligent agent system which autonomously calculates hourly energy needs and negotiates price based on a budget</p>
+							<p class="readable_text">A multi intelligent agent system which autonomously calculates hourly energy needs for a home and negotiates price based on a budget. Click above for further info!</p>
 						</div>
 					</div>
 				</div> 
@@ -69,9 +69,9 @@
 					</div>
 					<div class="col-lg-8">
 						<div>
-							<%= link_to 'Text Adventure Game', 
+							<%= link_to 'Zorkish', 
 								projects_path(:project => "game"), class:"project_link", remote:true %>
-							<p class="readable_text">A Zork like game built in c++ without the use of libraries</p>
+							<p class="readable_text">A Zork like text adventure game built in c++ without the use of libraries. Click above for further info!</p>
 						</div>
 					</div>
 				</div>

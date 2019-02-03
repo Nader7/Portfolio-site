@@ -34,7 +34,7 @@ $(document).ready(function() {
 		$.fn.fullpage.moveSlideRight();
 	});
 
-	$(document).on('click', '#home_nav', function(){
-		$.fn.fullpage.moveSlideRight();
+	$(document).on('click', '#title_down', function(){
+		$.fn.fullpage.moveSectionDown();
 	});
 });
