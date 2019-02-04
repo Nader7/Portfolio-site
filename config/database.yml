@@ -30,6 +30,15 @@ test:
   password: admin
   timeout: 5000
 
+production:
+  adapter: postgresql
+  encoding: unicode
+  database: portfolio_test
+  pool: 5
+  username: portfolio
+  password: admin
+  timeout: 5000
+
 #production:
 #  <<: *default
 #  database: db/production.sqlite3
