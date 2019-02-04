@@ -11,7 +11,6 @@ $(document).ready(function() {
 		navigation: true,
 		navigationTooltips: ['Title', 'Projects', 'Skills'],
 		showActiveTooltip: true,
-		responsiveSlides: true,
 		licenseKey: 'AA5B0793-878946C9-AD56A913-DD44D5FC'
 	});
 	
