@@ -13,7 +13,7 @@ $(document).ready(function() {
 		showActiveTooltip: true,
 		licenseKey: 'AA5B0793-878946C9-AD56A913-DD44D5FC',
 		afterRender: function () { //defined in this block for compatibility with fullpage
-			$('.lightbox_image').magnificPopup({type:'image'});
+			$('.lightbox_image').magnificPopup({type:'iframe'});
 		}
 	});
 	
