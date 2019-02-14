@@ -14,5 +14,6 @@
 //= require activestorage
 //= require jquery
 //= require bootstrap-sprockets
+//= require magnific-popup
 //= require turbolinks
 //= require_tree .
