@@ -72,6 +72,10 @@
 	text-decoration: none;
 	color: #110887;
 }
+#zork_git_link{
+	text-decoration: none;
+	color: #2424d9;
+}
 #features{
 	cursor: pointer;
 	color: #110887;
@@ -86,7 +90,6 @@
 	color: white;
 	font-size: 1.2vw;
 }
-
 .readable_text{
 	color: white;
 	font-size: 0.9vw;
@@ -104,6 +107,7 @@
 .project_image{
 	border-radius: 5px;
 }
+
 .vertical-align {
     display: flex;
     align-items: center;
