@@ -32,11 +32,13 @@ test:
 
 production:
   adapter: postgresql
-  encoding: unicode
-  database: portfolio_test
+  encoding: utf8
+  database: <%= ENV['RDS_DB_NAME'] %>
   pool: 5
-  username: portfolio
-  password: admin
+  username: <%= ENV['RDS_USERNAME'] %>
+  password: <%= ENV['RDS_PASSWORD'] %>
+  host: <%= ENV['RDS_HOSTNAME'] %>   
+  port: <%= ENV['RDS_PORT'] %>
   timeout: 5000
 
 #production:
