@@ -12658,10 +12658,10 @@ if ( !noGlobal ) {
 return jQuery;
 }));
 /* ========================================================================
- * Bootstrap: transition.js v3.3.7
- * http://getbootstrap.com/javascript/#transitions
+ * Bootstrap: affix.js v3.4.0
+ * https://getbootstrap.com/docs/3.4/javascript/#affix
  * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
+ * Copyright 2011-2018 Twitter, Inc.
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * ======================================================================== */
 
@@ -12670,58 +12670,163 @@ return jQuery;
 +function ($) {
   'use strict';
 
-  // CSS TRANSITION SUPPORT (Shoutout: http://www.modernizr.com/)
-  // ============================================================
+  // AFFIX CLASS DEFINITION
+  // ======================
 
-  function transitionEnd() {
-    var el = document.createElement('bootstrap')
+  var Affix = function (element, options) {
+    this.options = $.extend({}, Affix.DEFAULTS, options)
 
-    var transEndEventNames = {
-      WebkitTransition : 'webkitTransitionEnd',
-      MozTransition    : 'transitionend',
-      OTransition      : 'oTransitionEnd otransitionend',
-      transition       : 'transitionend'
-    }
+    var target = this.options.target === Affix.DEFAULTS.target ? $(this.options.target) : $(document).find(this.options.target)
 
-    for (var name in transEndEventNames) {
-      if (el.style[name] !== undefined) {
-        return { end: transEndEventNames[name] }
-      }
-    }
+    this.$target = target
+      .on('scroll.bs.affix.data-api', $.proxy(this.checkPosition, this))
+      .on('click.bs.affix.data-api',  $.proxy(this.checkPositionWithEventLoop, this))
 
-    return false // explicit for ie8 (  ._.)
+    this.$element     = $(element)
+    this.affixed      = null
+    this.unpin        = null
+    this.pinnedOffset = null
+
+    this.checkPosition()
   }
 
-  // http://blog.alexmaccaw.com/css-transitions
-  $.fn.emulateTransitionEnd = function (duration) {
-    var called = false
-    var $el = this
-    $(this).one('bsTransitionEnd', function () { called = true })
-    var callback = function () { if (!called) $($el).trigger($.support.transition.end) }
-    setTimeout(callback, duration)
+  Affix.VERSION  = '3.4.0'
+
+  Affix.RESET    = 'affix affix-top affix-bottom'
+
+  Affix.DEFAULTS = {
+    offset: 0,
+    target: window
+  }
+
+  Affix.prototype.getState = function (scrollHeight, height, offsetTop, offsetBottom) {
+    var scrollTop    = this.$target.scrollTop()
+    var position     = this.$element.offset()
+    var targetHeight = this.$target.height()
+
+    if (offsetTop != null && this.affixed == 'top') return scrollTop < offsetTop ? 'top' : false
+
+    if (this.affixed == 'bottom') {
+      if (offsetTop != null) return (scrollTop + this.unpin <= position.top) ? false : 'bottom'
+      return (scrollTop + targetHeight <= scrollHeight - offsetBottom) ? false : 'bottom'
+    }
+
+    var initializing   = this.affixed == null
+    var colliderTop    = initializing ? scrollTop : position.top
+    var colliderHeight = initializing ? targetHeight : height
+
+    if (offsetTop != null && scrollTop <= offsetTop) return 'top'
+    if (offsetBottom != null && (colliderTop + colliderHeight >= scrollHeight - offsetBottom)) return 'bottom'
+
+    return false
+  }
+
+  Affix.prototype.getPinnedOffset = function () {
+    if (this.pinnedOffset) return this.pinnedOffset
+    this.$element.removeClass(Affix.RESET).addClass('affix')
+    var scrollTop = this.$target.scrollTop()
+    var position  = this.$element.offset()
+    return (this.pinnedOffset = position.top - scrollTop)
+  }
+
+  Affix.prototype.checkPositionWithEventLoop = function () {
+    setTimeout($.proxy(this.checkPosition, this), 1)
+  }
+
+  Affix.prototype.checkPosition = function () {
+    if (!this.$element.is(':visible')) return
+
+    var height       = this.$element.height()
+    var offset       = this.options.offset
+    var offsetTop    = offset.top
+    var offsetBottom = offset.bottom
+    var scrollHeight = Math.max($(document).height(), $(document.body).height())
+
+    if (typeof offset != 'object')         offsetBottom = offsetTop = offset
+    if (typeof offsetTop == 'function')    offsetTop    = offset.top(this.$element)
+    if (typeof offsetBottom == 'function') offsetBottom = offset.bottom(this.$element)
+
+    var affix = this.getState(scrollHeight, height, offsetTop, offsetBottom)
+
+    if (this.affixed != affix) {
+      if (this.unpin != null) this.$element.css('top', '')
+
+      var affixType = 'affix' + (affix ? '-' + affix : '')
+      var e         = $.Event(affixType + '.bs.affix')
+
+      this.$element.trigger(e)
+
+      if (e.isDefaultPrevented()) return
+
+      this.affixed = affix
+      this.unpin = affix == 'bottom' ? this.getPinnedOffset() : null
+
+      this.$element
+        .removeClass(Affix.RESET)
+        .addClass(affixType)
+        .trigger(affixType.replace('affix', 'affixed') + '.bs.affix')
+    }
+
+    if (affix == 'bottom') {
+      this.$element.offset({
+        top: scrollHeight - height - offsetBottom
+      })
+    }
+  }
+
+
+  // AFFIX PLUGIN DEFINITION
+  // =======================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.affix')
+      var options = typeof option == 'object' && option
+
+      if (!data) $this.data('bs.affix', (data = new Affix(this, options)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  var old = $.fn.affix
+
+  $.fn.affix             = Plugin
+  $.fn.affix.Constructor = Affix
+
+
+  // AFFIX NO CONFLICT
+  // =================
+
+  $.fn.affix.noConflict = function () {
+    $.fn.affix = old
     return this
   }
 
-  $(function () {
-    $.support.transition = transitionEnd()
 
-    if (!$.support.transition) return
+  // AFFIX DATA-API
+  // ==============
 
-    $.event.special.bsTransitionEnd = {
-      bindType: $.support.transition.end,
-      delegateType: $.support.transition.end,
-      handle: function (e) {
-        if ($(e.target).is(this)) return e.handleObj.handler.apply(this, arguments)
-      }
-    }
+  $(window).on('load', function () {
+    $('[data-spy="affix"]').each(function () {
+      var $spy = $(this)
+      var data = $spy.data()
+
+      data.offset = data.offset || {}
+
+      if (data.offsetBottom != null) data.offset.bottom = data.offsetBottom
+      if (data.offsetTop    != null) data.offset.top    = data.offsetTop
+
+      Plugin.call($spy, data)
+    })
   })
 
 }(jQuery);
 /* ========================================================================
- * Bootstrap: alert.js v3.3.7
- * http://getbootstrap.com/javascript/#alerts
+ * Bootstrap: alert.js v3.4.0
+ * https://getbootstrap.com/docs/3.4/javascript/#alerts
  * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
+ * Copyright 2011-2018 Twitter, Inc.
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * ======================================================================== */
 
@@ -12738,7 +12843,7 @@ return jQuery;
     $(el).on('click', dismiss, this.close)
   }
 
-  Alert.VERSION = '3.3.7'
+  Alert.VERSION = '3.4.0'
 
   Alert.TRANSITION_DURATION = 150
 
@@ -12751,7 +12856,8 @@ return jQuery;
       selector = selector && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
     }
 
-    var $parent = $(selector === '#' ? [] : selector)
+    selector    = selector === '#' ? [] : selector
+    var $parent = $(document).find(selector)
 
     if (e) e.preventDefault()
 
@@ -12813,10 +12919,10 @@ return jQuery;
 
 }(jQuery);
 /* ========================================================================
- * Bootstrap: button.js v3.3.7
- * http://getbootstrap.com/javascript/#buttons
+ * Bootstrap: button.js v3.4.0
+ * https://getbootstrap.com/docs/3.4/javascript/#buttons
  * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
+ * Copyright 2011-2018 Twitter, Inc.
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * ======================================================================== */
 
@@ -12834,7 +12940,7 @@ return jQuery;
     this.isLoading = false
   }
 
-  Button.VERSION  = '3.3.7'
+  Button.VERSION  = '3.4.0'
 
   Button.DEFAULTS = {
     loadingText: 'loading...'
@@ -12939,10 +13045,10 @@ return jQuery;
 
 }(jQuery);
 /* ========================================================================
- * Bootstrap: carousel.js v3.3.7
- * http://getbootstrap.com/javascript/#carousel
+ * Bootstrap: carousel.js v3.4.0
+ * https://getbootstrap.com/docs/3.4/javascript/#carousel
  * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
+ * Copyright 2011-2018 Twitter, Inc.
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * ======================================================================== */
 
@@ -12971,7 +13077,7 @@ return jQuery;
       .on('mouseleave.bs.carousel', $.proxy(this.cycle, this))
   }
 
-  Carousel.VERSION  = '3.3.7'
+  Carousel.VERSION  = '3.4.0'
 
   Carousel.TRANSITION_DURATION = 600
 
@@ -13085,7 +13191,9 @@ return jQuery;
     var slidEvent = $.Event('slid.bs.carousel', { relatedTarget: relatedTarget, direction: direction }) // yes, "slid"
     if ($.support.transition && this.$element.hasClass('slide')) {
       $next.addClass(type)
-      $next[0].offsetWidth // force reflow
+      if (typeof $next === 'object' && $next.length) {
+        $next[0].offsetWidth // force reflow
+      }
       $active.addClass(direction)
       $next.addClass(direction)
       $active
@@ -13147,10 +13255,17 @@ return jQuery;
   // =================
 
   var clickHandler = function (e) {
-    var href
     var $this   = $(this)
-    var $target = $($this.attr('data-target') || (href = $this.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '')) // strip for ie7
+    var href    = $this.attr('href')
+    if (href) {
+      href = href.replace(/.*(?=#[^\s]+$)/, '') // strip for ie7
+    }
+
+    var target  = $this.attr('data-target') || href
+    var $target = $(document).find(target)
+
     if (!$target.hasClass('carousel')) return
+
     var options = $.extend({}, $target.data(), $this.data())
     var slideIndex = $this.attr('data-slide-to')
     if (slideIndex) options.interval = false
@@ -13177,10 +13292,10 @@ return jQuery;
 
 }(jQuery);
 /* ========================================================================
- * Bootstrap: collapse.js v3.3.7
- * http://getbootstrap.com/javascript/#collapse
+ * Bootstrap: collapse.js v3.4.0
+ * https://getbootstrap.com/docs/3.4/javascript/#collapse
  * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
+ * Copyright 2011-2018 Twitter, Inc.
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * ======================================================================== */
 
@@ -13209,7 +13324,7 @@ return jQuery;
     if (this.options.toggle) this.toggle()
   }
 
-  Collapse.VERSION  = '3.3.7'
+  Collapse.VERSION  = '3.4.0'
 
   Collapse.TRANSITION_DURATION = 350
 
@@ -13316,7 +13431,7 @@ return jQuery;
   }
 
   Collapse.prototype.getParent = function () {
-    return $(this.options.parent)
+    return $(document).find(this.options.parent)
       .find('[data-toggle="collapse"][data-parent="' + this.options.parent + '"]')
       .each($.proxy(function (i, element) {
         var $element = $(element)
@@ -13339,7 +13454,7 @@ return jQuery;
     var target = $trigger.attr('data-target')
       || (href = $trigger.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '') // strip for ie7
 
-    return $(target)
+    return $(document).find(target)
   }
 
 
@@ -13390,10 +13505,10 @@ return jQuery;
 
 }(jQuery);
 /* ========================================================================
- * Bootstrap: dropdown.js v3.3.7
- * http://getbootstrap.com/javascript/#dropdowns
+ * Bootstrap: dropdown.js v3.4.0
+ * https://getbootstrap.com/docs/3.4/javascript/#dropdowns
  * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
+ * Copyright 2011-2018 Twitter, Inc.
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * ======================================================================== */
 
@@ -13411,7 +13526,7 @@ return jQuery;
     $(element).on('click.bs.dropdown', this.toggle)
   }
 
-  Dropdown.VERSION = '3.3.7'
+  Dropdown.VERSION = '3.4.0'
 
   function getParent($this) {
     var selector = $this.attr('data-target')
@@ -13421,7 +13536,7 @@ return jQuery;
       selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
     }
 
-    var $parent = selector && $(selector)
+    var $parent = selector && $(document).find(selector)
 
     return $parent && $parent.length ? $parent : $this.parent()
   }
@@ -13556,10 +13671,10 @@ return jQuery;
 
 }(jQuery);
 /* ========================================================================
- * Bootstrap: modal.js v3.3.7
- * http://getbootstrap.com/javascript/#modals
+ * Bootstrap: modal.js v3.4.0
+ * https://getbootstrap.com/docs/3.4/javascript/#modals
  * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
+ * Copyright 2011-2018 Twitter, Inc.
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * ======================================================================== */
 
@@ -13572,15 +13687,16 @@ return jQuery;
   // ======================
 
   var Modal = function (element, options) {
-    this.options             = options
-    this.$body               = $(document.body)
-    this.$element            = $(element)
-    this.$dialog             = this.$element.find('.modal-dialog')
-    this.$backdrop           = null
-    this.isShown             = null
-    this.originalBodyPad     = null
-    this.scrollbarWidth      = 0
+    this.options = options
+    this.$body = $(document.body)
+    this.$element = $(element)
+    this.$dialog = this.$element.find('.modal-dialog')
+    this.$backdrop = null
+    this.isShown = null
+    this.originalBodyPad = null
+    this.scrollbarWidth = 0
     this.ignoreBackdropClick = false
+    this.fixedContent = '.navbar-fixed-top, .navbar-fixed-bottom'
 
     if (this.options.remote) {
       this.$element
@@ -13591,7 +13707,7 @@ return jQuery;
     }
   }
 
-  Modal.VERSION  = '3.3.7'
+  Modal.VERSION = '3.4.0'
 
   Modal.TRANSITION_DURATION = 300
   Modal.BACKDROP_TRANSITION_DURATION = 150
@@ -13608,7 +13724,7 @@ return jQuery;
 
   Modal.prototype.show = function (_relatedTarget) {
     var that = this
-    var e    = $.Event('show.bs.modal', { relatedTarget: _relatedTarget })
+    var e = $.Event('show.bs.modal', { relatedTarget: _relatedTarget })
 
     this.$element.trigger(e)
 
@@ -13699,8 +13815,8 @@ return jQuery;
       .off('focusin.bs.modal') // guard against infinite focus loop
       .on('focusin.bs.modal', $.proxy(function (e) {
         if (document !== e.target &&
-            this.$element[0] !== e.target &&
-            !this.$element.has(e.target).length) {
+          this.$element[0] !== e.target &&
+          !this.$element.has(e.target).length) {
           this.$element.trigger('focus')
         }
       }, this))
@@ -13802,7 +13918,7 @@ return jQuery;
     var modalIsOverflowing = this.$element[0].scrollHeight > document.documentElement.clientHeight
 
     this.$element.css({
-      paddingLeft:  !this.bodyIsOverflowing && modalIsOverflowing ? this.scrollbarWidth : '',
+      paddingLeft: !this.bodyIsOverflowing && modalIsOverflowing ? this.scrollbarWidth : '',
       paddingRight: this.bodyIsOverflowing && !modalIsOverflowing ? this.scrollbarWidth : ''
     })
   }
@@ -13827,11 +13943,26 @@ return jQuery;
   Modal.prototype.setScrollbar = function () {
     var bodyPad = parseInt((this.$body.css('padding-right') || 0), 10)
     this.originalBodyPad = document.body.style.paddingRight || ''
-    if (this.bodyIsOverflowing) this.$body.css('padding-right', bodyPad + this.scrollbarWidth)
+    var scrollbarWidth = this.scrollbarWidth
+    if (this.bodyIsOverflowing) {
+      this.$body.css('padding-right', bodyPad + scrollbarWidth)
+      $(this.fixedContent).each(function (index, element) {
+        var actualPadding = element.style.paddingRight
+        var calculatedPadding = $(element).css('padding-right')
+        $(element)
+          .data('padding-right', actualPadding)
+          .css('padding-right', parseFloat(calculatedPadding) + scrollbarWidth + 'px')
+      })
+    }
   }
 
   Modal.prototype.resetScrollbar = function () {
     this.$body.css('padding-right', this.originalBodyPad)
+    $(this.fixedContent).each(function (index, element) {
+      var padding = $(element).data('padding-right')
+      $(element).removeData('padding-right')
+      element.style.paddingRight = padding ? padding : ''
+    })
   }
 
   Modal.prototype.measureScrollbar = function () { // thx walsh
@@ -13849,8 +13980,8 @@ return jQuery;
 
   function Plugin(option, _relatedTarget) {
     return this.each(function () {
-      var $this   = $(this)
-      var data    = $this.data('bs.modal')
+      var $this = $(this)
+      var data = $this.data('bs.modal')
       var options = $.extend({}, Modal.DEFAULTS, $this.data(), typeof option == 'object' && option)
 
       if (!data) $this.data('bs.modal', (data = new Modal(this, options)))
@@ -13861,7 +13992,7 @@ return jQuery;
 
   var old = $.fn.modal
 
-  $.fn.modal             = Plugin
+  $.fn.modal = Plugin
   $.fn.modal.Constructor = Modal
 
 
@@ -13878,10 +14009,13 @@ return jQuery;
   // ==============
 
   $(document).on('click.bs.modal.data-api', '[data-toggle="modal"]', function (e) {
-    var $this   = $(this)
-    var href    = $this.attr('href')
-    var $target = $($this.attr('data-target') || (href && href.replace(/.*(?=#[^\s]+$)/, ''))) // strip for ie7
-    var option  = $target.data('bs.modal') ? 'toggle' : $.extend({ remote: !/#/.test(href) && href }, $target.data(), $this.data())
+    var $this = $(this)
+    var href = $this.attr('href')
+    var target = $this.attr('data-target') ||
+      (href && href.replace(/.*(?=#[^\s]+$)/, '')) // strip for ie7
+
+    var $target = $(document).find(target)
+    var option = $target.data('bs.modal') ? 'toggle' : $.extend({ remote: !/#/.test(href) && href }, $target.data(), $this.data())
 
     if ($this.is('a')) e.preventDefault()
 
@@ -13896,329 +14030,10 @@ return jQuery;
 
 }(jQuery);
 /* ========================================================================
- * Bootstrap: tab.js v3.3.7
- * http://getbootstrap.com/javascript/#tabs
+ * Bootstrap: scrollspy.js v3.4.0
+ * https://getbootstrap.com/docs/3.4/javascript/#scrollspy
  * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-
-+function ($) {
-  'use strict';
-
-  // TAB CLASS DEFINITION
-  // ====================
-
-  var Tab = function (element) {
-    // jscs:disable requireDollarBeforejQueryAssignment
-    this.element = $(element)
-    // jscs:enable requireDollarBeforejQueryAssignment
-  }
-
-  Tab.VERSION = '3.3.7'
-
-  Tab.TRANSITION_DURATION = 150
-
-  Tab.prototype.show = function () {
-    var $this    = this.element
-    var $ul      = $this.closest('ul:not(.dropdown-menu)')
-    var selector = $this.data('target')
-
-    if (!selector) {
-      selector = $this.attr('href')
-      selector = selector && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
-    }
-
-    if ($this.parent('li').hasClass('active')) return
-
-    var $previous = $ul.find('.active:last a')
-    var hideEvent = $.Event('hide.bs.tab', {
-      relatedTarget: $this[0]
-    })
-    var showEvent = $.Event('show.bs.tab', {
-      relatedTarget: $previous[0]
-    })
-
-    $previous.trigger(hideEvent)
-    $this.trigger(showEvent)
-
-    if (showEvent.isDefaultPrevented() || hideEvent.isDefaultPrevented()) return
-
-    var $target = $(selector)
-
-    this.activate($this.closest('li'), $ul)
-    this.activate($target, $target.parent(), function () {
-      $previous.trigger({
-        type: 'hidden.bs.tab',
-        relatedTarget: $this[0]
-      })
-      $this.trigger({
-        type: 'shown.bs.tab',
-        relatedTarget: $previous[0]
-      })
-    })
-  }
-
-  Tab.prototype.activate = function (element, container, callback) {
-    var $active    = container.find('> .active')
-    var transition = callback
-      && $.support.transition
-      && ($active.length && $active.hasClass('fade') || !!container.find('> .fade').length)
-
-    function next() {
-      $active
-        .removeClass('active')
-        .find('> .dropdown-menu > .active')
-          .removeClass('active')
-        .end()
-        .find('[data-toggle="tab"]')
-          .attr('aria-expanded', false)
-
-      element
-        .addClass('active')
-        .find('[data-toggle="tab"]')
-          .attr('aria-expanded', true)
-
-      if (transition) {
-        element[0].offsetWidth // reflow for transition
-        element.addClass('in')
-      } else {
-        element.removeClass('fade')
-      }
-
-      if (element.parent('.dropdown-menu').length) {
-        element
-          .closest('li.dropdown')
-            .addClass('active')
-          .end()
-          .find('[data-toggle="tab"]')
-            .attr('aria-expanded', true)
-      }
-
-      callback && callback()
-    }
-
-    $active.length && transition ?
-      $active
-        .one('bsTransitionEnd', next)
-        .emulateTransitionEnd(Tab.TRANSITION_DURATION) :
-      next()
-
-    $active.removeClass('in')
-  }
-
-
-  // TAB PLUGIN DEFINITION
-  // =====================
-
-  function Plugin(option) {
-    return this.each(function () {
-      var $this = $(this)
-      var data  = $this.data('bs.tab')
-
-      if (!data) $this.data('bs.tab', (data = new Tab(this)))
-      if (typeof option == 'string') data[option]()
-    })
-  }
-
-  var old = $.fn.tab
-
-  $.fn.tab             = Plugin
-  $.fn.tab.Constructor = Tab
-
-
-  // TAB NO CONFLICT
-  // ===============
-
-  $.fn.tab.noConflict = function () {
-    $.fn.tab = old
-    return this
-  }
-
-
-  // TAB DATA-API
-  // ============
-
-  var clickHandler = function (e) {
-    e.preventDefault()
-    Plugin.call($(this), 'show')
-  }
-
-  $(document)
-    .on('click.bs.tab.data-api', '[data-toggle="tab"]', clickHandler)
-    .on('click.bs.tab.data-api', '[data-toggle="pill"]', clickHandler)
-
-}(jQuery);
-/* ========================================================================
- * Bootstrap: affix.js v3.3.7
- * http://getbootstrap.com/javascript/#affix
- * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-
-+function ($) {
-  'use strict';
-
-  // AFFIX CLASS DEFINITION
-  // ======================
-
-  var Affix = function (element, options) {
-    this.options = $.extend({}, Affix.DEFAULTS, options)
-
-    this.$target = $(this.options.target)
-      .on('scroll.bs.affix.data-api', $.proxy(this.checkPosition, this))
-      .on('click.bs.affix.data-api',  $.proxy(this.checkPositionWithEventLoop, this))
-
-    this.$element     = $(element)
-    this.affixed      = null
-    this.unpin        = null
-    this.pinnedOffset = null
-
-    this.checkPosition()
-  }
-
-  Affix.VERSION  = '3.3.7'
-
-  Affix.RESET    = 'affix affix-top affix-bottom'
-
-  Affix.DEFAULTS = {
-    offset: 0,
-    target: window
-  }
-
-  Affix.prototype.getState = function (scrollHeight, height, offsetTop, offsetBottom) {
-    var scrollTop    = this.$target.scrollTop()
-    var position     = this.$element.offset()
-    var targetHeight = this.$target.height()
-
-    if (offsetTop != null && this.affixed == 'top') return scrollTop < offsetTop ? 'top' : false
-
-    if (this.affixed == 'bottom') {
-      if (offsetTop != null) return (scrollTop + this.unpin <= position.top) ? false : 'bottom'
-      return (scrollTop + targetHeight <= scrollHeight - offsetBottom) ? false : 'bottom'
-    }
-
-    var initializing   = this.affixed == null
-    var colliderTop    = initializing ? scrollTop : position.top
-    var colliderHeight = initializing ? targetHeight : height
-
-    if (offsetTop != null && scrollTop <= offsetTop) return 'top'
-    if (offsetBottom != null && (colliderTop + colliderHeight >= scrollHeight - offsetBottom)) return 'bottom'
-
-    return false
-  }
-
-  Affix.prototype.getPinnedOffset = function () {
-    if (this.pinnedOffset) return this.pinnedOffset
-    this.$element.removeClass(Affix.RESET).addClass('affix')
-    var scrollTop = this.$target.scrollTop()
-    var position  = this.$element.offset()
-    return (this.pinnedOffset = position.top - scrollTop)
-  }
-
-  Affix.prototype.checkPositionWithEventLoop = function () {
-    setTimeout($.proxy(this.checkPosition, this), 1)
-  }
-
-  Affix.prototype.checkPosition = function () {
-    if (!this.$element.is(':visible')) return
-
-    var height       = this.$element.height()
-    var offset       = this.options.offset
-    var offsetTop    = offset.top
-    var offsetBottom = offset.bottom
-    var scrollHeight = Math.max($(document).height(), $(document.body).height())
-
-    if (typeof offset != 'object')         offsetBottom = offsetTop = offset
-    if (typeof offsetTop == 'function')    offsetTop    = offset.top(this.$element)
-    if (typeof offsetBottom == 'function') offsetBottom = offset.bottom(this.$element)
-
-    var affix = this.getState(scrollHeight, height, offsetTop, offsetBottom)
-
-    if (this.affixed != affix) {
-      if (this.unpin != null) this.$element.css('top', '')
-
-      var affixType = 'affix' + (affix ? '-' + affix : '')
-      var e         = $.Event(affixType + '.bs.affix')
-
-      this.$element.trigger(e)
-
-      if (e.isDefaultPrevented()) return
-
-      this.affixed = affix
-      this.unpin = affix == 'bottom' ? this.getPinnedOffset() : null
-
-      this.$element
-        .removeClass(Affix.RESET)
-        .addClass(affixType)
-        .trigger(affixType.replace('affix', 'affixed') + '.bs.affix')
-    }
-
-    if (affix == 'bottom') {
-      this.$element.offset({
-        top: scrollHeight - height - offsetBottom
-      })
-    }
-  }
-
-
-  // AFFIX PLUGIN DEFINITION
-  // =======================
-
-  function Plugin(option) {
-    return this.each(function () {
-      var $this   = $(this)
-      var data    = $this.data('bs.affix')
-      var options = typeof option == 'object' && option
-
-      if (!data) $this.data('bs.affix', (data = new Affix(this, options)))
-      if (typeof option == 'string') data[option]()
-    })
-  }
-
-  var old = $.fn.affix
-
-  $.fn.affix             = Plugin
-  $.fn.affix.Constructor = Affix
-
-
-  // AFFIX NO CONFLICT
-  // =================
-
-  $.fn.affix.noConflict = function () {
-    $.fn.affix = old
-    return this
-  }
-
-
-  // AFFIX DATA-API
-  // ==============
-
-  $(window).on('load', function () {
-    $('[data-spy="affix"]').each(function () {
-      var $spy = $(this)
-      var data = $spy.data()
-
-      data.offset = data.offset || {}
-
-      if (data.offsetBottom != null) data.offset.bottom = data.offsetBottom
-      if (data.offsetTop    != null) data.offset.top    = data.offsetTop
-
-      Plugin.call($spy, data)
-    })
-  })
-
-}(jQuery);
-/* ========================================================================
- * Bootstrap: scrollspy.js v3.3.7
- * http://getbootstrap.com/javascript/#scrollspy
- * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
+ * Copyright 2011-2018 Twitter, Inc.
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * ======================================================================== */
 
@@ -14245,7 +14060,7 @@ return jQuery;
     this.process()
   }
 
-  ScrollSpy.VERSION  = '3.3.7'
+  ScrollSpy.VERSION  = '3.4.0'
 
   ScrollSpy.DEFAULTS = {
     offset: 10
@@ -14388,11 +14203,227 @@ return jQuery;
 
 }(jQuery);
 /* ========================================================================
- * Bootstrap: tooltip.js v3.3.7
- * http://getbootstrap.com/javascript/#tooltip
+ * Bootstrap: tab.js v3.4.0
+ * https://getbootstrap.com/docs/3.4/javascript/#tabs
+ * ========================================================================
+ * Copyright 2011-2018 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
+
++function ($) {
+  'use strict';
+
+  // TAB CLASS DEFINITION
+  // ====================
+
+  var Tab = function (element) {
+    // jscs:disable requireDollarBeforejQueryAssignment
+    this.element = $(element)
+    // jscs:enable requireDollarBeforejQueryAssignment
+  }
+
+  Tab.VERSION = '3.4.0'
+
+  Tab.TRANSITION_DURATION = 150
+
+  Tab.prototype.show = function () {
+    var $this    = this.element
+    var $ul      = $this.closest('ul:not(.dropdown-menu)')
+    var selector = $this.data('target')
+
+    if (!selector) {
+      selector = $this.attr('href')
+      selector = selector && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
+    }
+
+    if ($this.parent('li').hasClass('active')) return
+
+    var $previous = $ul.find('.active:last a')
+    var hideEvent = $.Event('hide.bs.tab', {
+      relatedTarget: $this[0]
+    })
+    var showEvent = $.Event('show.bs.tab', {
+      relatedTarget: $previous[0]
+    })
+
+    $previous.trigger(hideEvent)
+    $this.trigger(showEvent)
+
+    if (showEvent.isDefaultPrevented() || hideEvent.isDefaultPrevented()) return
+
+    var $target = $(document).find(selector)
+
+    this.activate($this.closest('li'), $ul)
+    this.activate($target, $target.parent(), function () {
+      $previous.trigger({
+        type: 'hidden.bs.tab',
+        relatedTarget: $this[0]
+      })
+      $this.trigger({
+        type: 'shown.bs.tab',
+        relatedTarget: $previous[0]
+      })
+    })
+  }
+
+  Tab.prototype.activate = function (element, container, callback) {
+    var $active    = container.find('> .active')
+    var transition = callback
+      && $.support.transition
+      && ($active.length && $active.hasClass('fade') || !!container.find('> .fade').length)
+
+    function next() {
+      $active
+        .removeClass('active')
+        .find('> .dropdown-menu > .active')
+        .removeClass('active')
+        .end()
+        .find('[data-toggle="tab"]')
+        .attr('aria-expanded', false)
+
+      element
+        .addClass('active')
+        .find('[data-toggle="tab"]')
+        .attr('aria-expanded', true)
+
+      if (transition) {
+        element[0].offsetWidth // reflow for transition
+        element.addClass('in')
+      } else {
+        element.removeClass('fade')
+      }
+
+      if (element.parent('.dropdown-menu').length) {
+        element
+          .closest('li.dropdown')
+          .addClass('active')
+          .end()
+          .find('[data-toggle="tab"]')
+          .attr('aria-expanded', true)
+      }
+
+      callback && callback()
+    }
+
+    $active.length && transition ?
+      $active
+        .one('bsTransitionEnd', next)
+        .emulateTransitionEnd(Tab.TRANSITION_DURATION) :
+      next()
+
+    $active.removeClass('in')
+  }
+
+
+  // TAB PLUGIN DEFINITION
+  // =====================
+
+  function Plugin(option) {
+    return this.each(function () {
+      var $this = $(this)
+      var data  = $this.data('bs.tab')
+
+      if (!data) $this.data('bs.tab', (data = new Tab(this)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  var old = $.fn.tab
+
+  $.fn.tab             = Plugin
+  $.fn.tab.Constructor = Tab
+
+
+  // TAB NO CONFLICT
+  // ===============
+
+  $.fn.tab.noConflict = function () {
+    $.fn.tab = old
+    return this
+  }
+
+
+  // TAB DATA-API
+  // ============
+
+  var clickHandler = function (e) {
+    e.preventDefault()
+    Plugin.call($(this), 'show')
+  }
+
+  $(document)
+    .on('click.bs.tab.data-api', '[data-toggle="tab"]', clickHandler)
+    .on('click.bs.tab.data-api', '[data-toggle="pill"]', clickHandler)
+
+}(jQuery);
+/* ========================================================================
+ * Bootstrap: transition.js v3.4.0
+ * https://getbootstrap.com/docs/3.4/javascript/#transitions
+ * ========================================================================
+ * Copyright 2011-2018 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+
+
++function ($) {
+  'use strict';
+
+  // CSS TRANSITION SUPPORT (Shoutout: https://modernizr.com/)
+  // ============================================================
+
+  function transitionEnd() {
+    var el = document.createElement('bootstrap')
+
+    var transEndEventNames = {
+      WebkitTransition : 'webkitTransitionEnd',
+      MozTransition    : 'transitionend',
+      OTransition      : 'oTransitionEnd otransitionend',
+      transition       : 'transitionend'
+    }
+
+    for (var name in transEndEventNames) {
+      if (el.style[name] !== undefined) {
+        return { end: transEndEventNames[name] }
+      }
+    }
+
+    return false // explicit for ie8 (  ._.)
+  }
+
+  // https://blog.alexmaccaw.com/css-transitions
+  $.fn.emulateTransitionEnd = function (duration) {
+    var called = false
+    var $el = this
+    $(this).one('bsTransitionEnd', function () { called = true })
+    var callback = function () { if (!called) $($el).trigger($.support.transition.end) }
+    setTimeout(callback, duration)
+    return this
+  }
+
+  $(function () {
+    $.support.transition = transitionEnd()
+
+    if (!$.support.transition) return
+
+    $.event.special.bsTransitionEnd = {
+      bindType: $.support.transition.end,
+      delegateType: $.support.transition.end,
+      handle: function (e) {
+        if ($(e.target).is(this)) return e.handleObj.handler.apply(this, arguments)
+      }
+    }
+  })
+
+}(jQuery);
+/* ========================================================================
+ * Bootstrap: tooltip.js v3.4.0
+ * https://getbootstrap.com/docs/3.4/javascript/#tooltip
  * Inspired by the original jQuery.tipsy by Jason Frame
  * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
+ * Copyright 2011-2018 Twitter, Inc.
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * ======================================================================== */
 
@@ -14416,7 +14447,7 @@ return jQuery;
     this.init('tooltip', element, options)
   }
 
-  Tooltip.VERSION  = '3.3.7'
+  Tooltip.VERSION  = '3.4.0'
 
   Tooltip.TRANSITION_DURATION = 150
 
@@ -14441,7 +14472,7 @@ return jQuery;
     this.type      = type
     this.$element  = $(element)
     this.options   = this.getOptions(options)
-    this.$viewport = this.options.viewport && $($.isFunction(this.options.viewport) ? this.options.viewport.call(this, this.$element) : (this.options.viewport.selector || this.options.viewport))
+    this.$viewport = this.options.viewport && $(document).find($.isFunction(this.options.viewport) ? this.options.viewport.call(this, this.$element) : (this.options.viewport.selector || this.options.viewport))
     this.inState   = { click: false, hover: false, focus: false }
 
     if (this.$element[0] instanceof document.constructor && !this.options.selector) {
@@ -14594,7 +14625,7 @@ return jQuery;
         .addClass(placement)
         .data('bs.' + this.type, this)
 
-      this.options.container ? $tip.appendTo(this.options.container) : $tip.insertAfter(this.$element)
+      this.options.container ? $tip.appendTo($(document).find(this.options.container)) : $tip.insertAfter(this.$element)
       this.$element.trigger('inserted.bs.' + this.type)
 
       var pos          = this.getPosition()
@@ -14909,10 +14940,10 @@ return jQuery;
 
 }(jQuery);
 /* ========================================================================
- * Bootstrap: popover.js v3.3.7
- * http://getbootstrap.com/javascript/#popovers
+ * Bootstrap: popover.js v3.4.0
+ * https://getbootstrap.com/docs/3.4/javascript/#popovers
  * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
+ * Copyright 2011-2018 Twitter, Inc.
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  * ======================================================================== */
 
@@ -14930,7 +14961,7 @@ return jQuery;
 
   if (!$.fn.tooltip) throw new Error('Popover requires tooltip.js')
 
-  Popover.VERSION  = '3.3.7'
+  Popover.VERSION  = '3.4.0'
 
   Popover.DEFAULTS = $.extend({}, $.fn.tooltip.Constructor.DEFAULTS, {
     placement: 'right',
@@ -14978,8 +15009,8 @@ return jQuery;
 
     return $e.attr('data-content')
       || (typeof o.content == 'function' ?
-            o.content.call($e[0]) :
-            o.content)
+        o.content.call($e[0]) :
+        o.content)
   }
 
   Popover.prototype.arrow = function () {
@@ -15029,6 +15060,1867 @@ return jQuery;
 
 
 
+/*! Magnific Popup - v1.1.0 - 2016-02-20
+* http://dimsemenov.com/plugins/magnific-popup/
+* Copyright (c) 2016 Dmitry Semenov; */
+
+;(function (factory) { 
+if (typeof define === 'function' && define.amd) { 
+ // AMD. Register as an anonymous module. 
+ define(['jquery'], factory); 
+ } else if (typeof exports === 'object') { 
+ // Node/CommonJS 
+ factory(require('jquery')); 
+ } else { 
+ // Browser globals 
+ factory(window.jQuery || window.Zepto); 
+ } 
+ }(function($) { 
+
+/*>>core*/
+/**
+ * 
+ * Magnific Popup Core JS file
+ * 
+ */
+
+
+/**
+ * Private static constants
+ */
+var CLOSE_EVENT = 'Close',
+	BEFORE_CLOSE_EVENT = 'BeforeClose',
+	AFTER_CLOSE_EVENT = 'AfterClose',
+	BEFORE_APPEND_EVENT = 'BeforeAppend',
+	MARKUP_PARSE_EVENT = 'MarkupParse',
+	OPEN_EVENT = 'Open',
+	CHANGE_EVENT = 'Change',
+	NS = 'mfp',
+	EVENT_NS = '.' + NS,
+	READY_CLASS = 'mfp-ready',
+	REMOVING_CLASS = 'mfp-removing',
+	PREVENT_CLOSE_CLASS = 'mfp-prevent-close';
+
+
+/**
+ * Private vars 
+ */
+/*jshint -W079 */
+var mfp, // As we have only one instance of MagnificPopup object, we define it locally to not to use 'this'
+	MagnificPopup = function(){},
+	_isJQ = !!(window.jQuery),
+	_prevStatus,
+	_window = $(window),
+	_document,
+	_prevContentType,
+	_wrapClasses,
+	_currPopupType;
+
+
+/**
+ * Private functions
+ */
+var _mfpOn = function(name, f) {
+		mfp.ev.on(NS + name + EVENT_NS, f);
+	},
+	_getEl = function(className, appendTo, html, raw) {
+		var el = document.createElement('div');
+		el.className = 'mfp-'+className;
+		if(html) {
+			el.innerHTML = html;
+		}
+		if(!raw) {
+			el = $(el);
+			if(appendTo) {
+				el.appendTo(appendTo);
+			}
+		} else if(appendTo) {
+			appendTo.appendChild(el);
+		}
+		return el;
+	},
+	_mfpTrigger = function(e, data) {
+		mfp.ev.triggerHandler(NS + e, data);
+
+		if(mfp.st.callbacks) {
+			// converts "mfpEventName" to "eventName" callback and triggers it if it's present
+			e = e.charAt(0).toLowerCase() + e.slice(1);
+			if(mfp.st.callbacks[e]) {
+				mfp.st.callbacks[e].apply(mfp, $.isArray(data) ? data : [data]);
+			}
+		}
+	},
+	_getCloseBtn = function(type) {
+		if(type !== _currPopupType || !mfp.currTemplate.closeBtn) {
+			mfp.currTemplate.closeBtn = $( mfp.st.closeMarkup.replace('%title%', mfp.st.tClose ) );
+			_currPopupType = type;
+		}
+		return mfp.currTemplate.closeBtn;
+	},
+	// Initialize Magnific Popup only when called at least once
+	_checkInstance = function() {
+		if(!$.magnificPopup.instance) {
+			/*jshint -W020 */
+			mfp = new MagnificPopup();
+			mfp.init();
+			$.magnificPopup.instance = mfp;
+		}
+	},
+	// CSS transition detection, http://stackoverflow.com/questions/7264899/detect-css-transitions-using-javascript-and-without-modernizr
+	supportsTransitions = function() {
+		var s = document.createElement('p').style, // 's' for style. better to create an element if body yet to exist
+			v = ['ms','O','Moz','Webkit']; // 'v' for vendor
+
+		if( s['transition'] !== undefined ) {
+			return true; 
+		}
+			
+		while( v.length ) {
+			if( v.pop() + 'Transition' in s ) {
+				return true;
+			}
+		}
+				
+		return false;
+	};
+
+
+
+/**
+ * Public functions
+ */
+MagnificPopup.prototype = {
+
+	constructor: MagnificPopup,
+
+	/**
+	 * Initializes Magnific Popup plugin. 
+	 * This function is triggered only once when $.fn.magnificPopup or $.magnificPopup is executed
+	 */
+	init: function() {
+		var appVersion = navigator.appVersion;
+		mfp.isLowIE = mfp.isIE8 = document.all && !document.addEventListener;
+		mfp.isAndroid = (/android/gi).test(appVersion);
+		mfp.isIOS = (/iphone|ipad|ipod/gi).test(appVersion);
+		mfp.supportsTransition = supportsTransitions();
+
+		// We disable fixed positioned lightbox on devices that don't handle it nicely.
+		// If you know a better way of detecting this - let me know.
+		mfp.probablyMobile = (mfp.isAndroid || mfp.isIOS || /(Opera Mini)|Kindle|webOS|BlackBerry|(Opera Mobi)|(Windows Phone)|IEMobile/i.test(navigator.userAgent) );
+		_document = $(document);
+
+		mfp.popupsCache = {};
+	},
+
+	/**
+	 * Opens popup
+	 * @param  data [description]
+	 */
+	open: function(data) {
+
+		var i;
+
+		if(data.isObj === false) { 
+			// convert jQuery collection to array to avoid conflicts later
+			mfp.items = data.items.toArray();
+
+			mfp.index = 0;
+			var items = data.items,
+				item;
+			for(i = 0; i < items.length; i++) {
+				item = items[i];
+				if(item.parsed) {
+					item = item.el[0];
+				}
+				if(item === data.el[0]) {
+					mfp.index = i;
+					break;
+				}
+			}
+		} else {
+			mfp.items = $.isArray(data.items) ? data.items : [data.items];
+			mfp.index = data.index || 0;
+		}
+
+		// if popup is already opened - we just update the content
+		if(mfp.isOpen) {
+			mfp.updateItemHTML();
+			return;
+		}
+		
+		mfp.types = []; 
+		_wrapClasses = '';
+		if(data.mainEl && data.mainEl.length) {
+			mfp.ev = data.mainEl.eq(0);
+		} else {
+			mfp.ev = _document;
+		}
+
+		if(data.key) {
+			if(!mfp.popupsCache[data.key]) {
+				mfp.popupsCache[data.key] = {};
+			}
+			mfp.currTemplate = mfp.popupsCache[data.key];
+		} else {
+			mfp.currTemplate = {};
+		}
+
+
+
+		mfp.st = $.extend(true, {}, $.magnificPopup.defaults, data ); 
+		mfp.fixedContentPos = mfp.st.fixedContentPos === 'auto' ? !mfp.probablyMobile : mfp.st.fixedContentPos;
+
+		if(mfp.st.modal) {
+			mfp.st.closeOnContentClick = false;
+			mfp.st.closeOnBgClick = false;
+			mfp.st.showCloseBtn = false;
+			mfp.st.enableEscapeKey = false;
+		}
+		
+
+		// Building markup
+		// main containers are created only once
+		if(!mfp.bgOverlay) {
+
+			// Dark overlay
+			mfp.bgOverlay = _getEl('bg').on('click'+EVENT_NS, function() {
+				mfp.close();
+			});
+
+			mfp.wrap = _getEl('wrap').attr('tabindex', -1).on('click'+EVENT_NS, function(e) {
+				if(mfp._checkIfClose(e.target)) {
+					mfp.close();
+				}
+			});
+
+			mfp.container = _getEl('container', mfp.wrap);
+		}
+
+		mfp.contentContainer = _getEl('content');
+		if(mfp.st.preloader) {
+			mfp.preloader = _getEl('preloader', mfp.container, mfp.st.tLoading);
+		}
+
+
+		// Initializing modules
+		var modules = $.magnificPopup.modules;
+		for(i = 0; i < modules.length; i++) {
+			var n = modules[i];
+			n = n.charAt(0).toUpperCase() + n.slice(1);
+			mfp['init'+n].call(mfp);
+		}
+		_mfpTrigger('BeforeOpen');
+
+
+		if(mfp.st.showCloseBtn) {
+			// Close button
+			if(!mfp.st.closeBtnInside) {
+				mfp.wrap.append( _getCloseBtn() );
+			} else {
+				_mfpOn(MARKUP_PARSE_EVENT, function(e, template, values, item) {
+					values.close_replaceWith = _getCloseBtn(item.type);
+				});
+				_wrapClasses += ' mfp-close-btn-in';
+			}
+		}
+
+		if(mfp.st.alignTop) {
+			_wrapClasses += ' mfp-align-top';
+		}
+
+	
+
+		if(mfp.fixedContentPos) {
+			mfp.wrap.css({
+				overflow: mfp.st.overflowY,
+				overflowX: 'hidden',
+				overflowY: mfp.st.overflowY
+			});
+		} else {
+			mfp.wrap.css({ 
+				top: _window.scrollTop(),
+				position: 'absolute'
+			});
+		}
+		if( mfp.st.fixedBgPos === false || (mfp.st.fixedBgPos === 'auto' && !mfp.fixedContentPos) ) {
+			mfp.bgOverlay.css({
+				height: _document.height(),
+				position: 'absolute'
+			});
+		}
+
+		
+
+		if(mfp.st.enableEscapeKey) {
+			// Close on ESC key
+			_document.on('keyup' + EVENT_NS, function(e) {
+				if(e.keyCode === 27) {
+					mfp.close();
+				}
+			});
+		}
+
+		_window.on('resize' + EVENT_NS, function() {
+			mfp.updateSize();
+		});
+
+
+		if(!mfp.st.closeOnContentClick) {
+			_wrapClasses += ' mfp-auto-cursor';
+		}
+		
+		if(_wrapClasses)
+			mfp.wrap.addClass(_wrapClasses);
+
+
+		// this triggers recalculation of layout, so we get it once to not to trigger twice
+		var windowHeight = mfp.wH = _window.height();
+
+		
+		var windowStyles = {};
+
+		if( mfp.fixedContentPos ) {
+            if(mfp._hasScrollBar(windowHeight)){
+                var s = mfp._getScrollbarSize();
+                if(s) {
+                    windowStyles.marginRight = s;
+                }
+            }
+        }
+
+		if(mfp.fixedContentPos) {
+			if(!mfp.isIE7) {
+				windowStyles.overflow = 'hidden';
+			} else {
+				// ie7 double-scroll bug
+				$('body, html').css('overflow', 'hidden');
+			}
+		}
+
+		
+		
+		var classesToadd = mfp.st.mainClass;
+		if(mfp.isIE7) {
+			classesToadd += ' mfp-ie7';
+		}
+		if(classesToadd) {
+			mfp._addClassToMFP( classesToadd );
+		}
+
+		// add content
+		mfp.updateItemHTML();
+
+		_mfpTrigger('BuildControls');
+
+		// remove scrollbar, add margin e.t.c
+		$('html').css(windowStyles);
+		
+		// add everything to DOM
+		mfp.bgOverlay.add(mfp.wrap).prependTo( mfp.st.prependTo || $(document.body) );
+
+		// Save last focused element
+		mfp._lastFocusedEl = document.activeElement;
+		
+		// Wait for next cycle to allow CSS transition
+		setTimeout(function() {
+			
+			if(mfp.content) {
+				mfp._addClassToMFP(READY_CLASS);
+				mfp._setFocus();
+			} else {
+				// if content is not defined (not loaded e.t.c) we add class only for BG
+				mfp.bgOverlay.addClass(READY_CLASS);
+			}
+			
+			// Trap the focus in popup
+			_document.on('focusin' + EVENT_NS, mfp._onFocusIn);
+
+		}, 16);
+
+		mfp.isOpen = true;
+		mfp.updateSize(windowHeight);
+		_mfpTrigger(OPEN_EVENT);
+
+		return data;
+	},
+
+	/**
+	 * Closes the popup
+	 */
+	close: function() {
+		if(!mfp.isOpen) return;
+		_mfpTrigger(BEFORE_CLOSE_EVENT);
+
+		mfp.isOpen = false;
+		// for CSS3 animation
+		if(mfp.st.removalDelay && !mfp.isLowIE && mfp.supportsTransition )  {
+			mfp._addClassToMFP(REMOVING_CLASS);
+			setTimeout(function() {
+				mfp._close();
+			}, mfp.st.removalDelay);
+		} else {
+			mfp._close();
+		}
+	},
+
+	/**
+	 * Helper for close() function
+	 */
+	_close: function() {
+		_mfpTrigger(CLOSE_EVENT);
+
+		var classesToRemove = REMOVING_CLASS + ' ' + READY_CLASS + ' ';
+
+		mfp.bgOverlay.detach();
+		mfp.wrap.detach();
+		mfp.container.empty();
+
+		if(mfp.st.mainClass) {
+			classesToRemove += mfp.st.mainClass + ' ';
+		}
+
+		mfp._removeClassFromMFP(classesToRemove);
+
+		if(mfp.fixedContentPos) {
+			var windowStyles = {marginRight: ''};
+			if(mfp.isIE7) {
+				$('body, html').css('overflow', '');
+			} else {
+				windowStyles.overflow = '';
+			}
+			$('html').css(windowStyles);
+		}
+		
+		_document.off('keyup' + EVENT_NS + ' focusin' + EVENT_NS);
+		mfp.ev.off(EVENT_NS);
+
+		// clean up DOM elements that aren't removed
+		mfp.wrap.attr('class', 'mfp-wrap').removeAttr('style');
+		mfp.bgOverlay.attr('class', 'mfp-bg');
+		mfp.container.attr('class', 'mfp-container');
+
+		// remove close button from target element
+		if(mfp.st.showCloseBtn &&
+		(!mfp.st.closeBtnInside || mfp.currTemplate[mfp.currItem.type] === true)) {
+			if(mfp.currTemplate.closeBtn)
+				mfp.currTemplate.closeBtn.detach();
+		}
+
+
+		if(mfp.st.autoFocusLast && mfp._lastFocusedEl) {
+			$(mfp._lastFocusedEl).focus(); // put tab focus back
+		}
+		mfp.currItem = null;	
+		mfp.content = null;
+		mfp.currTemplate = null;
+		mfp.prevHeight = 0;
+
+		_mfpTrigger(AFTER_CLOSE_EVENT);
+	},
+	
+	updateSize: function(winHeight) {
+
+		if(mfp.isIOS) {
+			// fixes iOS nav bars https://github.com/dimsemenov/Magnific-Popup/issues/2
+			var zoomLevel = document.documentElement.clientWidth / window.innerWidth;
+			var height = window.innerHeight * zoomLevel;
+			mfp.wrap.css('height', height);
+			mfp.wH = height;
+		} else {
+			mfp.wH = winHeight || _window.height();
+		}
+		// Fixes #84: popup incorrectly positioned with position:relative on body
+		if(!mfp.fixedContentPos) {
+			mfp.wrap.css('height', mfp.wH);
+		}
+
+		_mfpTrigger('Resize');
+
+	},
+
+	/**
+	 * Set content of popup based on current index
+	 */
+	updateItemHTML: function() {
+		var item = mfp.items[mfp.index];
+
+		// Detach and perform modifications
+		mfp.contentContainer.detach();
+
+		if(mfp.content)
+			mfp.content.detach();
+
+		if(!item.parsed) {
+			item = mfp.parseEl( mfp.index );
+		}
+
+		var type = item.type;
+
+		_mfpTrigger('BeforeChange', [mfp.currItem ? mfp.currItem.type : '', type]);
+		// BeforeChange event works like so:
+		// _mfpOn('BeforeChange', function(e, prevType, newType) { });
+
+		mfp.currItem = item;
+
+		if(!mfp.currTemplate[type]) {
+			var markup = mfp.st[type] ? mfp.st[type].markup : false;
+
+			// allows to modify markup
+			_mfpTrigger('FirstMarkupParse', markup);
+
+			if(markup) {
+				mfp.currTemplate[type] = $(markup);
+			} else {
+				// if there is no markup found we just define that template is parsed
+				mfp.currTemplate[type] = true;
+			}
+		}
+
+		if(_prevContentType && _prevContentType !== item.type) {
+			mfp.container.removeClass('mfp-'+_prevContentType+'-holder');
+		}
+
+		var newContent = mfp['get' + type.charAt(0).toUpperCase() + type.slice(1)](item, mfp.currTemplate[type]);
+		mfp.appendContent(newContent, type);
+
+		item.preloaded = true;
+
+		_mfpTrigger(CHANGE_EVENT, item);
+		_prevContentType = item.type;
+
+		// Append container back after its content changed
+		mfp.container.prepend(mfp.contentContainer);
+
+		_mfpTrigger('AfterChange');
+	},
+
+
+	/**
+	 * Set HTML content of popup
+	 */
+	appendContent: function(newContent, type) {
+		mfp.content = newContent;
+
+		if(newContent) {
+			if(mfp.st.showCloseBtn && mfp.st.closeBtnInside &&
+				mfp.currTemplate[type] === true) {
+				// if there is no markup, we just append close button element inside
+				if(!mfp.content.find('.mfp-close').length) {
+					mfp.content.append(_getCloseBtn());
+				}
+			} else {
+				mfp.content = newContent;
+			}
+		} else {
+			mfp.content = '';
+		}
+
+		_mfpTrigger(BEFORE_APPEND_EVENT);
+		mfp.container.addClass('mfp-'+type+'-holder');
+
+		mfp.contentContainer.append(mfp.content);
+	},
+
+
+	/**
+	 * Creates Magnific Popup data object based on given data
+	 * @param  {int} index Index of item to parse
+	 */
+	parseEl: function(index) {
+		var item = mfp.items[index],
+			type;
+
+		if(item.tagName) {
+			item = { el: $(item) };
+		} else {
+			type = item.type;
+			item = { data: item, src: item.src };
+		}
+
+		if(item.el) {
+			var types = mfp.types;
+
+			// check for 'mfp-TYPE' class
+			for(var i = 0; i < types.length; i++) {
+				if( item.el.hasClass('mfp-'+types[i]) ) {
+					type = types[i];
+					break;
+				}
+			}
+
+			item.src = item.el.attr('data-mfp-src');
+			if(!item.src) {
+				item.src = item.el.attr('href');
+			}
+		}
+
+		item.type = type || mfp.st.type || 'inline';
+		item.index = index;
+		item.parsed = true;
+		mfp.items[index] = item;
+		_mfpTrigger('ElementParse', item);
+
+		return mfp.items[index];
+	},
+
+
+	/**
+	 * Initializes single popup or a group of popups
+	 */
+	addGroup: function(el, options) {
+		var eHandler = function(e) {
+			e.mfpEl = this;
+			mfp._openClick(e, el, options);
+		};
+
+		if(!options) {
+			options = {};
+		}
+
+		var eName = 'click.magnificPopup';
+		options.mainEl = el;
+
+		if(options.items) {
+			options.isObj = true;
+			el.off(eName).on(eName, eHandler);
+		} else {
+			options.isObj = false;
+			if(options.delegate) {
+				el.off(eName).on(eName, options.delegate , eHandler);
+			} else {
+				options.items = el;
+				el.off(eName).on(eName, eHandler);
+			}
+		}
+	},
+	_openClick: function(e, el, options) {
+		var midClick = options.midClick !== undefined ? options.midClick : $.magnificPopup.defaults.midClick;
+
+
+		if(!midClick && ( e.which === 2 || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey ) ) {
+			return;
+		}
+
+		var disableOn = options.disableOn !== undefined ? options.disableOn : $.magnificPopup.defaults.disableOn;
+
+		if(disableOn) {
+			if($.isFunction(disableOn)) {
+				if( !disableOn.call(mfp) ) {
+					return true;
+				}
+			} else { // else it's number
+				if( _window.width() < disableOn ) {
+					return true;
+				}
+			}
+		}
+
+		if(e.type) {
+			e.preventDefault();
+
+			// This will prevent popup from closing if element is inside and popup is already opened
+			if(mfp.isOpen) {
+				e.stopPropagation();
+			}
+		}
+
+		options.el = $(e.mfpEl);
+		if(options.delegate) {
+			options.items = el.find(options.delegate);
+		}
+		mfp.open(options);
+	},
+
+
+	/**
+	 * Updates text on preloader
+	 */
+	updateStatus: function(status, text) {
+
+		if(mfp.preloader) {
+			if(_prevStatus !== status) {
+				mfp.container.removeClass('mfp-s-'+_prevStatus);
+			}
+
+			if(!text && status === 'loading') {
+				text = mfp.st.tLoading;
+			}
+
+			var data = {
+				status: status,
+				text: text
+			};
+			// allows to modify status
+			_mfpTrigger('UpdateStatus', data);
+
+			status = data.status;
+			text = data.text;
+
+			mfp.preloader.html(text);
+
+			mfp.preloader.find('a').on('click', function(e) {
+				e.stopImmediatePropagation();
+			});
+
+			mfp.container.addClass('mfp-s-'+status);
+			_prevStatus = status;
+		}
+	},
+
+
+	/*
+		"Private" helpers that aren't private at all
+	 */
+	// Check to close popup or not
+	// "target" is an element that was clicked
+	_checkIfClose: function(target) {
+
+		if($(target).hasClass(PREVENT_CLOSE_CLASS)) {
+			return;
+		}
+
+		var closeOnContent = mfp.st.closeOnContentClick;
+		var closeOnBg = mfp.st.closeOnBgClick;
+
+		if(closeOnContent && closeOnBg) {
+			return true;
+		} else {
+
+			// We close the popup if click is on close button or on preloader. Or if there is no content.
+			if(!mfp.content || $(target).hasClass('mfp-close') || (mfp.preloader && target === mfp.preloader[0]) ) {
+				return true;
+			}
+
+			// if click is outside the content
+			if(  (target !== mfp.content[0] && !$.contains(mfp.content[0], target))  ) {
+				if(closeOnBg) {
+					// last check, if the clicked element is in DOM, (in case it's removed onclick)
+					if( $.contains(document, target) ) {
+						return true;
+					}
+				}
+			} else if(closeOnContent) {
+				return true;
+			}
+
+		}
+		return false;
+	},
+	_addClassToMFP: function(cName) {
+		mfp.bgOverlay.addClass(cName);
+		mfp.wrap.addClass(cName);
+	},
+	_removeClassFromMFP: function(cName) {
+		this.bgOverlay.removeClass(cName);
+		mfp.wrap.removeClass(cName);
+	},
+	_hasScrollBar: function(winHeight) {
+		return (  (mfp.isIE7 ? _document.height() : document.body.scrollHeight) > (winHeight || _window.height()) );
+	},
+	_setFocus: function() {
+		(mfp.st.focus ? mfp.content.find(mfp.st.focus).eq(0) : mfp.wrap).focus();
+	},
+	_onFocusIn: function(e) {
+		if( e.target !== mfp.wrap[0] && !$.contains(mfp.wrap[0], e.target) ) {
+			mfp._setFocus();
+			return false;
+		}
+	},
+	_parseMarkup: function(template, values, item) {
+		var arr;
+		if(item.data) {
+			values = $.extend(item.data, values);
+		}
+		_mfpTrigger(MARKUP_PARSE_EVENT, [template, values, item] );
+
+		$.each(values, function(key, value) {
+			if(value === undefined || value === false) {
+				return true;
+			}
+			arr = key.split('_');
+			if(arr.length > 1) {
+				var el = template.find(EVENT_NS + '-'+arr[0]);
+
+				if(el.length > 0) {
+					var attr = arr[1];
+					if(attr === 'replaceWith') {
+						if(el[0] !== value[0]) {
+							el.replaceWith(value);
+						}
+					} else if(attr === 'img') {
+						if(el.is('img')) {
+							el.attr('src', value);
+						} else {
+							el.replaceWith( $('<img>').attr('src', value).attr('class', el.attr('class')) );
+						}
+					} else {
+						el.attr(arr[1], value);
+					}
+				}
+
+			} else {
+				template.find(EVENT_NS + '-'+key).html(value);
+			}
+		});
+	},
+
+	_getScrollbarSize: function() {
+		// thx David
+		if(mfp.scrollbarSize === undefined) {
+			var scrollDiv = document.createElement("div");
+			scrollDiv.style.cssText = 'width: 99px; height: 99px; overflow: scroll; position: absolute; top: -9999px;';
+			document.body.appendChild(scrollDiv);
+			mfp.scrollbarSize = scrollDiv.offsetWidth - scrollDiv.clientWidth;
+			document.body.removeChild(scrollDiv);
+		}
+		return mfp.scrollbarSize;
+	}
+
+}; /* MagnificPopup core prototype end */
+
+
+
+
+/**
+ * Public static functions
+ */
+$.magnificPopup = {
+	instance: null,
+	proto: MagnificPopup.prototype,
+	modules: [],
+
+	open: function(options, index) {
+		_checkInstance();
+
+		if(!options) {
+			options = {};
+		} else {
+			options = $.extend(true, {}, options);
+		}
+
+		options.isObj = true;
+		options.index = index || 0;
+		return this.instance.open(options);
+	},
+
+	close: function() {
+		return $.magnificPopup.instance && $.magnificPopup.instance.close();
+	},
+
+	registerModule: function(name, module) {
+		if(module.options) {
+			$.magnificPopup.defaults[name] = module.options;
+		}
+		$.extend(this.proto, module.proto);
+		this.modules.push(name);
+	},
+
+	defaults: {
+
+		// Info about options is in docs:
+		// http://dimsemenov.com/plugins/magnific-popup/documentation.html#options
+
+		disableOn: 0,
+
+		key: null,
+
+		midClick: false,
+
+		mainClass: '',
+
+		preloader: true,
+
+		focus: '', // CSS selector of input to focus after popup is opened
+
+		closeOnContentClick: false,
+
+		closeOnBgClick: true,
+
+		closeBtnInside: true,
+
+		showCloseBtn: true,
+
+		enableEscapeKey: true,
+
+		modal: false,
+
+		alignTop: false,
+
+		removalDelay: 0,
+
+		prependTo: null,
+
+		fixedContentPos: 'auto',
+
+		fixedBgPos: 'auto',
+
+		overflowY: 'auto',
+
+		closeMarkup: '<button title="%title%" type="button" class="mfp-close">&#215;</button>',
+
+		tClose: 'Close (Esc)',
+
+		tLoading: 'Loading...',
+
+		autoFocusLast: true
+
+	}
+};
+
+
+
+$.fn.magnificPopup = function(options) {
+	_checkInstance();
+
+	var jqEl = $(this);
+
+	// We call some API method of first param is a string
+	if (typeof options === "string" ) {
+
+		if(options === 'open') {
+			var items,
+				itemOpts = _isJQ ? jqEl.data('magnificPopup') : jqEl[0].magnificPopup,
+				index = parseInt(arguments[1], 10) || 0;
+
+			if(itemOpts.items) {
+				items = itemOpts.items[index];
+			} else {
+				items = jqEl;
+				if(itemOpts.delegate) {
+					items = items.find(itemOpts.delegate);
+				}
+				items = items.eq( index );
+			}
+			mfp._openClick({mfpEl:items}, jqEl, itemOpts);
+		} else {
+			if(mfp.isOpen)
+				mfp[options].apply(mfp, Array.prototype.slice.call(arguments, 1));
+		}
+
+	} else {
+		// clone options obj
+		options = $.extend(true, {}, options);
+
+		/*
+		 * As Zepto doesn't support .data() method for objects
+		 * and it works only in normal browsers
+		 * we assign "options" object directly to the DOM element. FTW!
+		 */
+		if(_isJQ) {
+			jqEl.data('magnificPopup', options);
+		} else {
+			jqEl[0].magnificPopup = options;
+		}
+
+		mfp.addGroup(jqEl, options);
+
+	}
+	return jqEl;
+};
+
+/*>>core*/
+
+/*>>inline*/
+
+var INLINE_NS = 'inline',
+	_hiddenClass,
+	_inlinePlaceholder,
+	_lastInlineElement,
+	_putInlineElementsBack = function() {
+		if(_lastInlineElement) {
+			_inlinePlaceholder.after( _lastInlineElement.addClass(_hiddenClass) ).detach();
+			_lastInlineElement = null;
+		}
+	};
+
+$.magnificPopup.registerModule(INLINE_NS, {
+	options: {
+		hiddenClass: 'hide', // will be appended with `mfp-` prefix
+		markup: '',
+		tNotFound: 'Content not found'
+	},
+	proto: {
+
+		initInline: function() {
+			mfp.types.push(INLINE_NS);
+
+			_mfpOn(CLOSE_EVENT+'.'+INLINE_NS, function() {
+				_putInlineElementsBack();
+			});
+		},
+
+		getInline: function(item, template) {
+
+			_putInlineElementsBack();
+
+			if(item.src) {
+				var inlineSt = mfp.st.inline,
+					el = $(item.src);
+
+				if(el.length) {
+
+					// If target element has parent - we replace it with placeholder and put it back after popup is closed
+					var parent = el[0].parentNode;
+					if(parent && parent.tagName) {
+						if(!_inlinePlaceholder) {
+							_hiddenClass = inlineSt.hiddenClass;
+							_inlinePlaceholder = _getEl(_hiddenClass);
+							_hiddenClass = 'mfp-'+_hiddenClass;
+						}
+						// replace target inline element with placeholder
+						_lastInlineElement = el.after(_inlinePlaceholder).detach().removeClass(_hiddenClass);
+					}
+
+					mfp.updateStatus('ready');
+				} else {
+					mfp.updateStatus('error', inlineSt.tNotFound);
+					el = $('<div>');
+				}
+
+				item.inlineElement = el;
+				return el;
+			}
+
+			mfp.updateStatus('ready');
+			mfp._parseMarkup(template, {}, item);
+			return template;
+		}
+	}
+});
+
+/*>>inline*/
+
+/*>>ajax*/
+var AJAX_NS = 'ajax',
+	_ajaxCur,
+	_removeAjaxCursor = function() {
+		if(_ajaxCur) {
+			$(document.body).removeClass(_ajaxCur);
+		}
+	},
+	_destroyAjaxRequest = function() {
+		_removeAjaxCursor();
+		if(mfp.req) {
+			mfp.req.abort();
+		}
+	};
+
+$.magnificPopup.registerModule(AJAX_NS, {
+
+	options: {
+		settings: null,
+		cursor: 'mfp-ajax-cur',
+		tError: '<a href="%url%">The content</a> could not be loaded.'
+	},
+
+	proto: {
+		initAjax: function() {
+			mfp.types.push(AJAX_NS);
+			_ajaxCur = mfp.st.ajax.cursor;
+
+			_mfpOn(CLOSE_EVENT+'.'+AJAX_NS, _destroyAjaxRequest);
+			_mfpOn('BeforeChange.' + AJAX_NS, _destroyAjaxRequest);
+		},
+		getAjax: function(item) {
+
+			if(_ajaxCur) {
+				$(document.body).addClass(_ajaxCur);
+			}
+
+			mfp.updateStatus('loading');
+
+			var opts = $.extend({
+				url: item.src,
+				success: function(data, textStatus, jqXHR) {
+					var temp = {
+						data:data,
+						xhr:jqXHR
+					};
+
+					_mfpTrigger('ParseAjax', temp);
+
+					mfp.appendContent( $(temp.data), AJAX_NS );
+
+					item.finished = true;
+
+					_removeAjaxCursor();
+
+					mfp._setFocus();
+
+					setTimeout(function() {
+						mfp.wrap.addClass(READY_CLASS);
+					}, 16);
+
+					mfp.updateStatus('ready');
+
+					_mfpTrigger('AjaxContentAdded');
+				},
+				error: function() {
+					_removeAjaxCursor();
+					item.finished = item.loadError = true;
+					mfp.updateStatus('error', mfp.st.ajax.tError.replace('%url%', item.src));
+				}
+			}, mfp.st.ajax.settings);
+
+			mfp.req = $.ajax(opts);
+
+			return '';
+		}
+	}
+});
+
+/*>>ajax*/
+
+/*>>image*/
+var _imgInterval,
+	_getTitle = function(item) {
+		if(item.data && item.data.title !== undefined)
+			return item.data.title;
+
+		var src = mfp.st.image.titleSrc;
+
+		if(src) {
+			if($.isFunction(src)) {
+				return src.call(mfp, item);
+			} else if(item.el) {
+				return item.el.attr(src) || '';
+			}
+		}
+		return '';
+	};
+
+$.magnificPopup.registerModule('image', {
+
+	options: {
+		markup: '<div class="mfp-figure">'+
+					'<div class="mfp-close"></div>'+
+					'<figure>'+
+						'<div class="mfp-img"></div>'+
+						'<figcaption>'+
+							'<div class="mfp-bottom-bar">'+
+								'<div class="mfp-title"></div>'+
+								'<div class="mfp-counter"></div>'+
+							'</div>'+
+						'</figcaption>'+
+					'</figure>'+
+				'</div>',
+		cursor: 'mfp-zoom-out-cur',
+		titleSrc: 'title',
+		verticalFit: true,
+		tError: '<a href="%url%">The image</a> could not be loaded.'
+	},
+
+	proto: {
+		initImage: function() {
+			var imgSt = mfp.st.image,
+				ns = '.image';
+
+			mfp.types.push('image');
+
+			_mfpOn(OPEN_EVENT+ns, function() {
+				if(mfp.currItem.type === 'image' && imgSt.cursor) {
+					$(document.body).addClass(imgSt.cursor);
+				}
+			});
+
+			_mfpOn(CLOSE_EVENT+ns, function() {
+				if(imgSt.cursor) {
+					$(document.body).removeClass(imgSt.cursor);
+				}
+				_window.off('resize' + EVENT_NS);
+			});
+
+			_mfpOn('Resize'+ns, mfp.resizeImage);
+			if(mfp.isLowIE) {
+				_mfpOn('AfterChange', mfp.resizeImage);
+			}
+		},
+		resizeImage: function() {
+			var item = mfp.currItem;
+			if(!item || !item.img) return;
+
+			if(mfp.st.image.verticalFit) {
+				var decr = 0;
+				// fix box-sizing in ie7/8
+				if(mfp.isLowIE) {
+					decr = parseInt(item.img.css('padding-top'), 10) + parseInt(item.img.css('padding-bottom'),10);
+				}
+				item.img.css('max-height', mfp.wH-decr);
+			}
+		},
+		_onImageHasSize: function(item) {
+			if(item.img) {
+
+				item.hasSize = true;
+
+				if(_imgInterval) {
+					clearInterval(_imgInterval);
+				}
+
+				item.isCheckingImgSize = false;
+
+				_mfpTrigger('ImageHasSize', item);
+
+				if(item.imgHidden) {
+					if(mfp.content)
+						mfp.content.removeClass('mfp-loading');
+
+					item.imgHidden = false;
+				}
+
+			}
+		},
+
+		/**
+		 * Function that loops until the image has size to display elements that rely on it asap
+		 */
+		findImageSize: function(item) {
+
+			var counter = 0,
+				img = item.img[0],
+				mfpSetInterval = function(delay) {
+
+					if(_imgInterval) {
+						clearInterval(_imgInterval);
+					}
+					// decelerating interval that checks for size of an image
+					_imgInterval = setInterval(function() {
+						if(img.naturalWidth > 0) {
+							mfp._onImageHasSize(item);
+							return;
+						}
+
+						if(counter > 200) {
+							clearInterval(_imgInterval);
+						}
+
+						counter++;
+						if(counter === 3) {
+							mfpSetInterval(10);
+						} else if(counter === 40) {
+							mfpSetInterval(50);
+						} else if(counter === 100) {
+							mfpSetInterval(500);
+						}
+					}, delay);
+				};
+
+			mfpSetInterval(1);
+		},
+
+		getImage: function(item, template) {
+
+			var guard = 0,
+
+				// image load complete handler
+				onLoadComplete = function() {
+					if(item) {
+						if (item.img[0].complete) {
+							item.img.off('.mfploader');
+
+							if(item === mfp.currItem){
+								mfp._onImageHasSize(item);
+
+								mfp.updateStatus('ready');
+							}
+
+							item.hasSize = true;
+							item.loaded = true;
+
+							_mfpTrigger('ImageLoadComplete');
+
+						}
+						else {
+							// if image complete check fails 200 times (20 sec), we assume that there was an error.
+							guard++;
+							if(guard < 200) {
+								setTimeout(onLoadComplete,100);
+							} else {
+								onLoadError();
+							}
+						}
+					}
+				},
+
+				// image error handler
+				onLoadError = function() {
+					if(item) {
+						item.img.off('.mfploader');
+						if(item === mfp.currItem){
+							mfp._onImageHasSize(item);
+							mfp.updateStatus('error', imgSt.tError.replace('%url%', item.src) );
+						}
+
+						item.hasSize = true;
+						item.loaded = true;
+						item.loadError = true;
+					}
+				},
+				imgSt = mfp.st.image;
+
+
+			var el = template.find('.mfp-img');
+			if(el.length) {
+				var img = document.createElement('img');
+				img.className = 'mfp-img';
+				if(item.el && item.el.find('img').length) {
+					img.alt = item.el.find('img').attr('alt');
+				}
+				item.img = $(img).on('load.mfploader', onLoadComplete).on('error.mfploader', onLoadError);
+				img.src = item.src;
+
+				// without clone() "error" event is not firing when IMG is replaced by new IMG
+				// TODO: find a way to avoid such cloning
+				if(el.is('img')) {
+					item.img = item.img.clone();
+				}
+
+				img = item.img[0];
+				if(img.naturalWidth > 0) {
+					item.hasSize = true;
+				} else if(!img.width) {
+					item.hasSize = false;
+				}
+			}
+
+			mfp._parseMarkup(template, {
+				title: _getTitle(item),
+				img_replaceWith: item.img
+			}, item);
+
+			mfp.resizeImage();
+
+			if(item.hasSize) {
+				if(_imgInterval) clearInterval(_imgInterval);
+
+				if(item.loadError) {
+					template.addClass('mfp-loading');
+					mfp.updateStatus('error', imgSt.tError.replace('%url%', item.src) );
+				} else {
+					template.removeClass('mfp-loading');
+					mfp.updateStatus('ready');
+				}
+				return template;
+			}
+
+			mfp.updateStatus('loading');
+			item.loading = true;
+
+			if(!item.hasSize) {
+				item.imgHidden = true;
+				template.addClass('mfp-loading');
+				mfp.findImageSize(item);
+			}
+
+			return template;
+		}
+	}
+});
+
+/*>>image*/
+
+/*>>zoom*/
+var hasMozTransform,
+	getHasMozTransform = function() {
+		if(hasMozTransform === undefined) {
+			hasMozTransform = document.createElement('p').style.MozTransform !== undefined;
+		}
+		return hasMozTransform;
+	};
+
+$.magnificPopup.registerModule('zoom', {
+
+	options: {
+		enabled: false,
+		easing: 'ease-in-out',
+		duration: 300,
+		opener: function(element) {
+			return element.is('img') ? element : element.find('img');
+		}
+	},
+
+	proto: {
+
+		initZoom: function() {
+			var zoomSt = mfp.st.zoom,
+				ns = '.zoom',
+				image;
+
+			if(!zoomSt.enabled || !mfp.supportsTransition) {
+				return;
+			}
+
+			var duration = zoomSt.duration,
+				getElToAnimate = function(image) {
+					var newImg = image.clone().removeAttr('style').removeAttr('class').addClass('mfp-animated-image'),
+						transition = 'all '+(zoomSt.duration/1000)+'s ' + zoomSt.easing,
+						cssObj = {
+							position: 'fixed',
+							zIndex: 9999,
+							left: 0,
+							top: 0,
+							'-webkit-backface-visibility': 'hidden'
+						},
+						t = 'transition';
+
+					cssObj['-webkit-'+t] = cssObj['-moz-'+t] = cssObj['-o-'+t] = cssObj[t] = transition;
+
+					newImg.css(cssObj);
+					return newImg;
+				},
+				showMainContent = function() {
+					mfp.content.css('visibility', 'visible');
+				},
+				openTimeout,
+				animatedImg;
+
+			_mfpOn('BuildControls'+ns, function() {
+				if(mfp._allowZoom()) {
+
+					clearTimeout(openTimeout);
+					mfp.content.css('visibility', 'hidden');
+
+					// Basically, all code below does is clones existing image, puts in on top of the current one and animated it
+
+					image = mfp._getItemToZoom();
+
+					if(!image) {
+						showMainContent();
+						return;
+					}
+
+					animatedImg = getElToAnimate(image);
+
+					animatedImg.css( mfp._getOffset() );
+
+					mfp.wrap.append(animatedImg);
+
+					openTimeout = setTimeout(function() {
+						animatedImg.css( mfp._getOffset( true ) );
+						openTimeout = setTimeout(function() {
+
+							showMainContent();
+
+							setTimeout(function() {
+								animatedImg.remove();
+								image = animatedImg = null;
+								_mfpTrigger('ZoomAnimationEnded');
+							}, 16); // avoid blink when switching images
+
+						}, duration); // this timeout equals animation duration
+
+					}, 16); // by adding this timeout we avoid short glitch at the beginning of animation
+
+
+					// Lots of timeouts...
+				}
+			});
+			_mfpOn(BEFORE_CLOSE_EVENT+ns, function() {
+				if(mfp._allowZoom()) {
+
+					clearTimeout(openTimeout);
+
+					mfp.st.removalDelay = duration;
+
+					if(!image) {
+						image = mfp._getItemToZoom();
+						if(!image) {
+							return;
+						}
+						animatedImg = getElToAnimate(image);
+					}
+
+					animatedImg.css( mfp._getOffset(true) );
+					mfp.wrap.append(animatedImg);
+					mfp.content.css('visibility', 'hidden');
+
+					setTimeout(function() {
+						animatedImg.css( mfp._getOffset() );
+					}, 16);
+				}
+
+			});
+
+			_mfpOn(CLOSE_EVENT+ns, function() {
+				if(mfp._allowZoom()) {
+					showMainContent();
+					if(animatedImg) {
+						animatedImg.remove();
+					}
+					image = null;
+				}
+			});
+		},
+
+		_allowZoom: function() {
+			return mfp.currItem.type === 'image';
+		},
+
+		_getItemToZoom: function() {
+			if(mfp.currItem.hasSize) {
+				return mfp.currItem.img;
+			} else {
+				return false;
+			}
+		},
+
+		// Get element postion relative to viewport
+		_getOffset: function(isLarge) {
+			var el;
+			if(isLarge) {
+				el = mfp.currItem.img;
+			} else {
+				el = mfp.st.zoom.opener(mfp.currItem.el || mfp.currItem);
+			}
+
+			var offset = el.offset();
+			var paddingTop = parseInt(el.css('padding-top'),10);
+			var paddingBottom = parseInt(el.css('padding-bottom'),10);
+			offset.top -= ( $(window).scrollTop() - paddingTop );
+
+
+			/*
+
+			Animating left + top + width/height looks glitchy in Firefox, but perfect in Chrome. And vice-versa.
+
+			 */
+			var obj = {
+				width: el.width(),
+				// fix Zepto height+padding issue
+				height: (_isJQ ? el.innerHeight() : el[0].offsetHeight) - paddingBottom - paddingTop
+			};
+
+			// I hate to do this, but there is no another option
+			if( getHasMozTransform() ) {
+				obj['-moz-transform'] = obj['transform'] = 'translate(' + offset.left + 'px,' + offset.top + 'px)';
+			} else {
+				obj.left = offset.left;
+				obj.top = offset.top;
+			}
+			return obj;
+		}
+
+	}
+});
+
+
+
+/*>>zoom*/
+
+/*>>iframe*/
+
+var IFRAME_NS = 'iframe',
+	_emptyPage = '//about:blank',
+
+	_fixIframeBugs = function(isShowing) {
+		if(mfp.currTemplate[IFRAME_NS]) {
+			var el = mfp.currTemplate[IFRAME_NS].find('iframe');
+			if(el.length) {
+				// reset src after the popup is closed to avoid "video keeps playing after popup is closed" bug
+				if(!isShowing) {
+					el[0].src = _emptyPage;
+				}
+
+				// IE8 black screen bug fix
+				if(mfp.isIE8) {
+					el.css('display', isShowing ? 'block' : 'none');
+				}
+			}
+		}
+	};
+
+$.magnificPopup.registerModule(IFRAME_NS, {
+
+	options: {
+		markup: '<div class="mfp-iframe-scaler">'+
+					'<div class="mfp-close"></div>'+
+					'<iframe class="mfp-iframe" src="//about:blank" frameborder="0" allowfullscreen></iframe>'+
+				'</div>',
+
+		srcAction: 'iframe_src',
+
+		// we don't care and support only one default type of URL by default
+		patterns: {
+			youtube: {
+				index: 'youtube.com',
+				id: 'v=',
+				src: '//www.youtube.com/embed/%id%?autoplay=1'
+			},
+			vimeo: {
+				index: 'vimeo.com/',
+				id: '/',
+				src: '//player.vimeo.com/video/%id%?autoplay=1'
+			},
+			gmaps: {
+				index: '//maps.google.',
+				src: '%id%&output=embed'
+			}
+		}
+	},
+
+	proto: {
+		initIframe: function() {
+			mfp.types.push(IFRAME_NS);
+
+			_mfpOn('BeforeChange', function(e, prevType, newType) {
+				if(prevType !== newType) {
+					if(prevType === IFRAME_NS) {
+						_fixIframeBugs(); // iframe if removed
+					} else if(newType === IFRAME_NS) {
+						_fixIframeBugs(true); // iframe is showing
+					}
+				}// else {
+					// iframe source is switched, don't do anything
+				//}
+			});
+
+			_mfpOn(CLOSE_EVENT + '.' + IFRAME_NS, function() {
+				_fixIframeBugs();
+			});
+		},
+
+		getIframe: function(item, template) {
+			var embedSrc = item.src;
+			var iframeSt = mfp.st.iframe;
+
+			$.each(iframeSt.patterns, function() {
+				if(embedSrc.indexOf( this.index ) > -1) {
+					if(this.id) {
+						if(typeof this.id === 'string') {
+							embedSrc = embedSrc.substr(embedSrc.lastIndexOf(this.id)+this.id.length, embedSrc.length);
+						} else {
+							embedSrc = this.id.call( this, embedSrc );
+						}
+					}
+					embedSrc = this.src.replace('%id%', embedSrc );
+					return false; // break;
+				}
+			});
+
+			var dataObj = {};
+			if(iframeSt.srcAction) {
+				dataObj[iframeSt.srcAction] = embedSrc;
+			}
+			mfp._parseMarkup(template, dataObj, item);
+
+			mfp.updateStatus('ready');
+
+			return template;
+		}
+	}
+});
+
+
+
+/*>>iframe*/
+
+/*>>gallery*/
+/**
+ * Get looped index depending on number of slides
+ */
+var _getLoopedId = function(index) {
+		var numSlides = mfp.items.length;
+		if(index > numSlides - 1) {
+			return index - numSlides;
+		} else  if(index < 0) {
+			return numSlides + index;
+		}
+		return index;
+	},
+	_replaceCurrTotal = function(text, curr, total) {
+		return text.replace(/%curr%/gi, curr + 1).replace(/%total%/gi, total);
+	};
+
+$.magnificPopup.registerModule('gallery', {
+
+	options: {
+		enabled: false,
+		arrowMarkup: '<button title="%title%" type="button" class="mfp-arrow mfp-arrow-%dir%"></button>',
+		preload: [0,2],
+		navigateByImgClick: true,
+		arrows: true,
+
+		tPrev: 'Previous (Left arrow key)',
+		tNext: 'Next (Right arrow key)',
+		tCounter: '%curr% of %total%'
+	},
+
+	proto: {
+		initGallery: function() {
+
+			var gSt = mfp.st.gallery,
+				ns = '.mfp-gallery';
+
+			mfp.direction = true; // true - next, false - prev
+
+			if(!gSt || !gSt.enabled ) return false;
+
+			_wrapClasses += ' mfp-gallery';
+
+			_mfpOn(OPEN_EVENT+ns, function() {
+
+				if(gSt.navigateByImgClick) {
+					mfp.wrap.on('click'+ns, '.mfp-img', function() {
+						if(mfp.items.length > 1) {
+							mfp.next();
+							return false;
+						}
+					});
+				}
+
+				_document.on('keydown'+ns, function(e) {
+					if (e.keyCode === 37) {
+						mfp.prev();
+					} else if (e.keyCode === 39) {
+						mfp.next();
+					}
+				});
+			});
+
+			_mfpOn('UpdateStatus'+ns, function(e, data) {
+				if(data.text) {
+					data.text = _replaceCurrTotal(data.text, mfp.currItem.index, mfp.items.length);
+				}
+			});
+
+			_mfpOn(MARKUP_PARSE_EVENT+ns, function(e, element, values, item) {
+				var l = mfp.items.length;
+				values.counter = l > 1 ? _replaceCurrTotal(gSt.tCounter, item.index, l) : '';
+			});
+
+			_mfpOn('BuildControls' + ns, function() {
+				if(mfp.items.length > 1 && gSt.arrows && !mfp.arrowLeft) {
+					var markup = gSt.arrowMarkup,
+						arrowLeft = mfp.arrowLeft = $( markup.replace(/%title%/gi, gSt.tPrev).replace(/%dir%/gi, 'left') ).addClass(PREVENT_CLOSE_CLASS),
+						arrowRight = mfp.arrowRight = $( markup.replace(/%title%/gi, gSt.tNext).replace(/%dir%/gi, 'right') ).addClass(PREVENT_CLOSE_CLASS);
+
+					arrowLeft.click(function() {
+						mfp.prev();
+					});
+					arrowRight.click(function() {
+						mfp.next();
+					});
+
+					mfp.container.append(arrowLeft.add(arrowRight));
+				}
+			});
+
+			_mfpOn(CHANGE_EVENT+ns, function() {
+				if(mfp._preloadTimeout) clearTimeout(mfp._preloadTimeout);
+
+				mfp._preloadTimeout = setTimeout(function() {
+					mfp.preloadNearbyImages();
+					mfp._preloadTimeout = null;
+				}, 16);
+			});
+
+
+			_mfpOn(CLOSE_EVENT+ns, function() {
+				_document.off(ns);
+				mfp.wrap.off('click'+ns);
+				mfp.arrowRight = mfp.arrowLeft = null;
+			});
+
+		},
+		next: function() {
+			mfp.direction = true;
+			mfp.index = _getLoopedId(mfp.index + 1);
+			mfp.updateItemHTML();
+		},
+		prev: function() {
+			mfp.direction = false;
+			mfp.index = _getLoopedId(mfp.index - 1);
+			mfp.updateItemHTML();
+		},
+		goTo: function(newIndex) {
+			mfp.direction = (newIndex >= mfp.index);
+			mfp.index = newIndex;
+			mfp.updateItemHTML();
+		},
+		preloadNearbyImages: function() {
+			var p = mfp.st.gallery.preload,
+				preloadBefore = Math.min(p[0], mfp.items.length),
+				preloadAfter = Math.min(p[1], mfp.items.length),
+				i;
+
+			for(i = 1; i <= (mfp.direction ? preloadAfter : preloadBefore); i++) {
+				mfp._preloadItem(mfp.index+i);
+			}
+			for(i = 1; i <= (mfp.direction ? preloadBefore : preloadAfter); i++) {
+				mfp._preloadItem(mfp.index-i);
+			}
+		},
+		_preloadItem: function(index) {
+			index = _getLoopedId(index);
+
+			if(mfp.items[index].preloaded) {
+				return;
+			}
+
+			var item = mfp.items[index];
+			if(!item.parsed) {
+				item = mfp.parseEl( index );
+			}
+
+			_mfpTrigger('LazyLoad', item);
+
+			if(item.type === 'image') {
+				item.img = $('<img class="mfp-img" />').on('load.mfploader', function() {
+					item.hasSize = true;
+				}).on('error.mfploader', function() {
+					item.hasSize = true;
+					item.loadError = true;
+					_mfpTrigger('LazyLoadError', item);
+				}).attr('src', item.src);
+			}
+
+
+			item.preloaded = true;
+		}
+	}
+});
+
+/*>>gallery*/
+
+/*>>retina*/
+
+var RETINA_NS = 'retina';
+
+$.magnificPopup.registerModule(RETINA_NS, {
+	options: {
+		replaceSrc: function(item) {
+			return item.src.replace(/\.\w+$/, function(m) { return '@2x' + m; });
+		},
+		ratio: 1 // Function or number.  Set to 1 to disable.
+	},
+	proto: {
+		initRetina: function() {
+			if(window.devicePixelRatio > 1) {
+
+				var st = mfp.st.retina,
+					ratio = st.ratio;
+
+				ratio = !isNaN(ratio) ? ratio : ratio();
+
+				if(ratio > 1) {
+					_mfpOn('ImageHasSize' + '.' + RETINA_NS, function(e, item) {
+						item.img.css({
+							'max-width': item.img[0].naturalWidth / ratio,
+							'width': '100%'
+						});
+					});
+					_mfpOn('ElementParse' + '.' + RETINA_NS, function(e, item) {
+						item.src = st.replaceSrc(item, ratio);
+					});
+				}
+			}
+
+		}
+	}
+});
+
+/*>>retina*/
+ _checkInstance(); }));
 /*
 Turbolinks 5.2.0
 Copyright © 2018 Basecamp, LLC
@@ -15655,4004 +17547,54 @@ Copyright © 2018 Basecamp, LLC
 
 }).call(this);
 /*!
- * fullPage 3.0.4
+ * fullPage 3.0.4 - Extensions 0.1.7
  * https://github.com/alvarotrigo/fullPage.js
+ * @license http://alvarotrigo.com/fullPage/extensions/#license
  *
- * @license GPLv3 for open source use only
- * or Fullpage Commercial License for commercial use
- * http://alvarotrigo.com/fullPage/pricing/
- *
- * Copyright (C) 2018 http://alvarotrigo.com/fullPage - A project by Alvaro Trigo
+ * Copyright (C) 2018 alvarotrigo.com - A project by Alvaro Trigo
  */
 
-(function( root, window, document, factory, undefined) {
-    if( typeof define === 'function' && define.amd ) {
-        // AMD. Register as an anonymous module.
-        define( function() {
-            root.fullpage = factory(window, document);
-            return root.fullpage;
-        } );
-    } else if( typeof exports === 'object' ) {
-        // Node. Does not work with strict CommonJS.
-        module.exports = factory(window, document);
-    } else {
-        // Browser globals.
-        window.fullpage = factory(window, document);
-    }
-}(this, window, document, function(window, document){
-    'use strict';
-
-    // keeping central set of classnames and selectors
-    var WRAPPER =               'fullpage-wrapper';
-    var WRAPPER_SEL =           '.' + WRAPPER;
-
-    // slimscroll
-    var SCROLLABLE =            'fp-scrollable';
-    var SCROLLABLE_SEL =        '.' + SCROLLABLE;
-
-    // util
-    var RESPONSIVE =            'fp-responsive';
-    var NO_TRANSITION =         'fp-notransition';
-    var DESTROYED =             'fp-destroyed';
-    var ENABLED =               'fp-enabled';
-    var VIEWING_PREFIX =        'fp-viewing';
-    var ACTIVE =                'active';
-    var ACTIVE_SEL =            '.' + ACTIVE;
-    var COMPLETELY =            'fp-completely';
-    var COMPLETELY_SEL =        '.' + COMPLETELY;
-
-    // section
-    var SECTION_DEFAULT_SEL =   '.section';
-    var SECTION =               'fp-section';
-    var SECTION_SEL =           '.' + SECTION;
-    var SECTION_ACTIVE_SEL =    SECTION_SEL + ACTIVE_SEL;
-    var TABLE_CELL =            'fp-tableCell';
-    var TABLE_CELL_SEL =        '.' + TABLE_CELL;
-    var AUTO_HEIGHT =           'fp-auto-height';
-    var AUTO_HEIGHT_SEL =       '.' + AUTO_HEIGHT;
-    var NORMAL_SCROLL =         'fp-normal-scroll';
-    var NORMAL_SCROLL_SEL =     '.' + NORMAL_SCROLL;
-
-    // section nav
-    var SECTION_NAV =           'fp-nav';
-    var SECTION_NAV_SEL =       '#' + SECTION_NAV;
-    var SECTION_NAV_TOOLTIP =   'fp-tooltip';
-    var SECTION_NAV_TOOLTIP_SEL='.'+SECTION_NAV_TOOLTIP;
-    var SHOW_ACTIVE_TOOLTIP =   'fp-show-active';
-
-    // slide
-    var SLIDE_DEFAULT_SEL =     '.slide';
-    var SLIDE =                 'fp-slide';
-    var SLIDE_SEL =             '.' + SLIDE;
-    var SLIDE_ACTIVE_SEL =      SLIDE_SEL + ACTIVE_SEL;
-    var SLIDES_WRAPPER =        'fp-slides';
-    var SLIDES_WRAPPER_SEL =    '.' + SLIDES_WRAPPER;
-    var SLIDES_CONTAINER =      'fp-slidesContainer';
-    var SLIDES_CONTAINER_SEL =  '.' + SLIDES_CONTAINER;
-    var TABLE =                 'fp-table';
-
-    // slide nav
-    var SLIDES_NAV =            'fp-slidesNav';
-    var SLIDES_NAV_SEL =        '.' + SLIDES_NAV;
-    var SLIDES_NAV_LINK_SEL =   SLIDES_NAV_SEL + ' a';
-    var SLIDES_ARROW =          'fp-controlArrow';
-    var SLIDES_ARROW_SEL =      '.' + SLIDES_ARROW;
-    var SLIDES_PREV =           'fp-prev';
-    var SLIDES_PREV_SEL =       '.' + SLIDES_PREV;
-    var SLIDES_ARROW_PREV =     SLIDES_ARROW + ' ' + SLIDES_PREV;
-    var SLIDES_ARROW_PREV_SEL = SLIDES_ARROW_SEL + SLIDES_PREV_SEL;
-    var SLIDES_NEXT =           'fp-next';
-    var SLIDES_NEXT_SEL =       '.' + SLIDES_NEXT;
-    var SLIDES_ARROW_NEXT =     SLIDES_ARROW + ' ' + SLIDES_NEXT;
-    var SLIDES_ARROW_NEXT_SEL = SLIDES_ARROW_SEL + SLIDES_NEXT_SEL;
-
-    function initialise(containerSelector, options) {
-        var isOK = options && new RegExp('([\\d\\w]{8}-){3}[\\d\\w]{8}|^(?=.*?[A-Y])(?=.*?[a-y])(?=.*?[0-8])(?=.*?[#?!@$%^&*-]).{8,}$').test(options['li'+'cen'+'seK' + 'e' + 'y']) || document.domain.indexOf('al'+'varotri' +'go' + '.' + 'com') > -1;
-
-        //only once my friend!
-        if(hasClass($('html'), ENABLED)){ displayWarnings(); return; }
-
-        // common jQuery objects
-        var $htmlBody = $('html, body');
-        var $body = $('body')[0];
-
-        var FP = {};
-
-        // Creating some defaults, extending them with any options that were provided
-        options = deepExtend({
-            //navigation
-            menu: false,
-            anchors:[],
-            lockAnchors: false,
-            navigation: false,
-            navigationPosition: 'right',
-            navigationTooltips: [],
-            showActiveTooltip: false,
-            slidesNavigation: false,
-            slidesNavPosition: 'bottom',
-            scrollBar: false,
-            hybrid: false,
-
-            //scrolling
-            css3: true,
-            scrollingSpeed: 700,
-            autoScrolling: true,
-            fitToSection: true,
-            fitToSectionDelay: 1000,
-            easing: 'easeInOutCubic',
-            easingcss3: 'ease',
-            loopBottom: false,
-            loopTop: false,
-            loopHorizontal: true,
-            continuousVertical: false,
-            continuousHorizontal: false,
-            scrollHorizontally: false,
-            interlockedSlides: false,
-            dragAndMove: false,
-            offsetSections: false,
-            resetSliders: false,
-            fadingEffect: false,
-            normalScrollElements: null,
-            scrollOverflow: false,
-            scrollOverflowReset: false,
-            scrollOverflowHandler: window.fp_scrolloverflow ? window.fp_scrolloverflow.iscrollHandler : null,
-            scrollOverflowOptions: null,
-            touchSensitivity: 5,
-            normalScrollElementTouchThreshold: 5,
-            bigSectionsDestination: null,
-
-            //Accessibility
-            keyboardScrolling: true,
-            animateAnchor: true,
-            recordHistory: true,
-
-            //design
-            controlArrows: true,
-            controlArrowColor: '#fff',
-            verticalCentered: true,
-            sectionsColor : [],
-            paddingTop: 0,
-            paddingBottom: 0,
-            fixedElements: null,
-            responsive: 0, //backwards compabitility with responsiveWiddth
-            responsiveWidth: 0,
-            responsiveHeight: 0,
-            responsiveSlides: false,
-            parallax: false,
-            parallaxOptions: {
-                type: 'reveal',
-                percentage: 62,
-                property: 'translate'
-            },
-
-            //Custom selectors
-            sectionSelector: SECTION_DEFAULT_SEL,
-            slideSelector: SLIDE_DEFAULT_SEL,
-
-            //events
-            v2compatible: false,
-            afterLoad: null,
-            onLeave: null,
-            afterRender: null,
-            afterResize: null,
-            afterReBuild: null,
-            afterSlideLoad: null,
-            onSlideLeave: null,
-            afterResponsive: null,
-
-            lazyLoading: true
-        }, options);
-
-        //flag to avoid very fast sliding for landscape sliders
-        var slideMoving = false;
-
-        var isTouchDevice = navigator.userAgent.match(/(iPhone|iPod|iPad|Android|playbook|silk|BlackBerry|BB10|Windows Phone|Tizen|Bada|webOS|IEMobile|Opera Mini)/);
-        var isTouch = (('ontouchstart' in window) || (navigator.msMaxTouchPoints > 0) || (navigator.maxTouchPoints));
-        var container = typeof containerSelector === 'string' ? $(containerSelector)[0] : containerSelector;
-        var windowsHeight = getWindowHeight();
-        var isResizing = false;
-        var isWindowFocused = true;
-        var lastScrolledDestiny;
-        var lastScrolledSlide;
-        var canScroll = true;
-        var scrollings = [];
-        var controlPressed;
-        var startingSection;
-        var isScrollAllowed = {};
-        isScrollAllowed.m = {  'up':true, 'down':true, 'left':true, 'right':true };
-        isScrollAllowed.k = deepExtend({}, isScrollAllowed.m);
-        var MSPointer = getMSPointer();
-        var events = {
-            touchmove: 'ontouchmove' in window ? 'touchmove' :  MSPointer.move,
-            touchstart: 'ontouchstart' in window ? 'touchstart' :  MSPointer.down
-        };
-        var scrollBarHandler;
-
-        // taken from https://github.com/udacity/ud891/blob/gh-pages/lesson2-focus/07-modals-and-keyboard-traps/solution/modal.js
-        var focusableElementsString = 'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [tabindex="0"], [contenteditable]';
-
-        //timeouts
-        var resizeId;
-        var afterSectionLoadsId;
-        var afterSlideLoadsId;
-        var scrollId;
-        var scrollId2;
-        var keydownId;
-        var originals = deepExtend({}, options); //deep copy
-        var activeAnimation;
-        var g_initialAnchorsInDom = false;
-
-        displayWarnings();
-
-        //easeInOutCubic animation included in the plugin
-        window.fp_easings = deepExtend(window.fp_easings, {
-            easeInOutCubic: function (t, b, c, d) {
-                if ((t/=d/2) < 1) return c/2*t*t*t + b;return c/2*((t-=2)*t*t + 2) + b;
-            }
-        });
-
-        /**
-        * Sets the autoScroll option.
-        * It changes the scroll bar visibility and the history of the site as a result.
-        */
-        function setAutoScrolling(value, type){
-            //removing the transformation
-            if(!value){
-                silentScroll(0);
-            }
-
-            setVariableState('autoScrolling', value, type);
-
-            var element = $(SECTION_ACTIVE_SEL)[0];
-
-            if(options.autoScrolling && !options.scrollBar){
-                css($htmlBody, {
-                    'overflow': 'hidden',
-                    'height': '100%'
-                });
-
-                setRecordHistory(originals.recordHistory, 'internal');
-
-                //for IE touch devices
-                css(container, {
-                    '-ms-touch-action': 'none',
-                    'touch-action': 'none'
-                });
-
-                if(element != null){
-                    //moving the container up
-                    silentScroll(element.offsetTop);
-                }
-
-            }else{
-                css($htmlBody, {
-                    'overflow' : 'visible',
-                    'height' : 'initial'
-                });
-
-                setRecordHistory(false, 'internal');
-
-                //for IE touch devices
-                css(container, {
-                    '-ms-touch-action': '',
-                    'touch-action': ''
-                });
-
-                //scrolling the page to the section with no animation
-                if (element != null) {
-                    var scrollSettings = getScrollSettings(element.offsetTop);
-                    scrollSettings.element.scrollTo(0, scrollSettings.options);
-                }
-            }
-        }
-
-        /**
-        * Defines wheter to record the history for each hash change in the URL.
-        */
-        function setRecordHistory(value, type){
-            setVariableState('recordHistory', value, type);
-        }
-
-        /**
-        * Defines the scrolling speed
-        */
-        function setScrollingSpeed(value, type){
-            setVariableState('scrollingSpeed', value, type);
-        }
-
-        /**
-        * Sets fitToSection
-        */
-        function setFitToSection(value, type){
-            setVariableState('fitToSection', value, type);
-        }
-
-        /**
-        * Sets lockAnchors
-        */
-        function setLockAnchors(value){
-            options.lockAnchors = value;
-        }
-
-        /**
-        * Adds or remove the possibility of scrolling through sections by using the mouse wheel or the trackpad.
-        */
-        function setMouseWheelScrolling(value){
-            if(value){
-                addMouseWheelHandler();
-                addMiddleWheelHandler();
-            }else{
-                removeMouseWheelHandler();
-                removeMiddleWheelHandler();
-            }
-        }
-
-        /**
-        * Adds or remove the possibility of scrolling through sections by using the mouse wheel/trackpad or touch gestures.
-        * Optionally a second parameter can be used to specify the direction for which the action will be applied.
-        *
-        * @param directions string containing the direction or directions separated by comma.
-        */
-        function setAllowScrolling(value, directions){
-            if(typeof directions !== 'undefined'){
-                directions = directions.replace(/ /g,'').split(',');
-
-                directions.forEach(function (direction){
-                    setIsScrollAllowed(value, direction, 'm');
-                });
-            }
-            else{
-                setIsScrollAllowed(value, 'all', 'm');
-            }
-        }
-
-        /**
-        * Adds or remove the mouse wheel hijacking
-        */
-        function setMouseHijack(value){
-            if(value){
-                setMouseWheelScrolling(true);
-                addTouchHandler();
-            }else{
-                setMouseWheelScrolling(false);
-                removeTouchHandler();
-            }
-        }
-
-        /**
-        * Adds or remove the possibility of scrolling through sections by using the keyboard arrow keys
-        */
-        function setKeyboardScrolling(value, directions){
-            if(typeof directions !== 'undefined'){
-                directions = directions.replace(/ /g,'').split(',');
-
-                directions.forEach(function(direction){
-                    setIsScrollAllowed(value, direction, 'k');
-                });
-            }else{
-                setIsScrollAllowed(value, 'all', 'k');
-                options.keyboardScrolling = value;
-            }
-        }
-
-        /**
-        * Moves the page up one section.
-        */
-        function moveSectionUp(){
-            var prev = prevUntil($(SECTION_ACTIVE_SEL)[0], SECTION_SEL);
-
-            //looping to the bottom if there's no more sections above
-            if (!prev && (options.loopTop || options.continuousVertical)) {
-                prev = last($(SECTION_SEL));
-            }
-
-            if (prev != null) {
-                scrollPage(prev, null, true);
-            }
-        }
-
-        /**
-        * Moves the page down one section.
-        */
-        function moveSectionDown(){
-            var next = nextUntil($(SECTION_ACTIVE_SEL)[0], SECTION_SEL);
-
-            //looping to the top if there's no more sections below
-            if(!next &&
-                (options.loopBottom || options.continuousVertical)){
-                next = $(SECTION_SEL)[0];
-            }
-
-            if(next != null){
-                scrollPage(next, null, false);
-            }
-        }
-
-        /**
-        * Moves the page to the given section and slide with no animation.
-        * Anchors or index positions can be used as params.
-        */
-        function silentMoveTo(sectionAnchor, slideAnchor){
-            setScrollingSpeed (0, 'internal');
-            moveTo(sectionAnchor, slideAnchor);
-            setScrollingSpeed (originals.scrollingSpeed, 'internal');
-        }
-
-        /**
-        * Moves the page to the given section and slide.
-        * Anchors or index positions can be used as params.
-        */
-        function moveTo(sectionAnchor, slideAnchor){
-            var destiny = getSectionByAnchor(sectionAnchor);
-
-            if (typeof slideAnchor !== 'undefined'){
-                scrollPageAndSlide(sectionAnchor, slideAnchor);
-            }else if(destiny != null){
-                scrollPage(destiny);
-            }
-        }
-
-        /**
-        * Slides right the slider of the active section.
-        * Optional `section` param.
-        */
-        function moveSlideRight(section){
-            moveSlide('right', section);
-        }
-
-        /**
-        * Slides left the slider of the active section.
-        * Optional `section` param.
-        */
-        function moveSlideLeft(section){
-            moveSlide('left', section);
-        }
-
-        /**
-         * When resizing is finished, we adjust the slides sizes and positions
-         */
-        function reBuild(resizing){
-            if(hasClass(container, DESTROYED)){ return; }  //nothing to do if the plugin was destroyed
-
-            isResizing = true;
-
-            windowsHeight = getWindowHeight();  //updating global var
-
-            var sections = $(SECTION_SEL);
-            for (var i = 0; i < sections.length; ++i) {
-                var section = sections[i];
-                var slidesWrap = $(SLIDES_WRAPPER_SEL, section)[0];
-                var slides = $(SLIDE_SEL, section);
-
-                //adjusting the height of the table-cell for IE and Firefox
-                if(options.verticalCentered){
-                    css($(TABLE_CELL_SEL, section), {'height': getTableHeight(section) + 'px'});
-                }
-
-                css(section, {'height': windowsHeight + 'px'});
-
-                //adjusting the position fo the FULL WIDTH slides...
-                if (slides.length > 1) {
-                    landscapeScroll(slidesWrap, $(SLIDE_ACTIVE_SEL, slidesWrap)[0]);
-                }
-            }
-
-            if(options.scrollOverflow){
-                scrollBarHandler.createScrollBarForAll();
-            }
-
-            var activeSection = $(SECTION_ACTIVE_SEL)[0];
-            var sectionIndex = index(activeSection, SECTION_SEL);
-
-            //isn't it the first section?
-            if(sectionIndex){
-                //adjusting the position for the current section
-                silentMoveTo(sectionIndex + 1);
-            }
-
-            isResizing = false;
-            if(isFunction( options.afterResize ) && resizing){
-                options.afterResize.call(container, window.innerWidth, window.innerHeight);
-            }
-            if(isFunction( options.afterReBuild ) && !resizing){
-                options.afterReBuild.call(container);
-            }
-        }
-
-        /**
-        * Turns fullPage.js to normal scrolling mode when the viewport `width` or `height`
-        * are smaller than the set limit values.
-        */
-        function setResponsive(active){
-            var isResponsive = hasClass($body, RESPONSIVE);
-
-            if(active){
-                if(!isResponsive){
-                    setAutoScrolling(false, 'internal');
-                    setFitToSection(false, 'internal');
-                    hide($(SECTION_NAV_SEL));
-                    addClass($body, RESPONSIVE);
-                    if(isFunction( options.afterResponsive )){
-                        options.afterResponsive.call( container, active);
-                    }
-                }
-            }
-            else if(isResponsive){
-                setAutoScrolling(originals.autoScrolling, 'internal');
-                setFitToSection(originals.autoScrolling, 'internal');
-                show($(SECTION_NAV_SEL));
-                removeClass($body, RESPONSIVE);
-                if(isFunction( options.afterResponsive )){
-                    options.afterResponsive.call( container, active);
-                }
-            }
-        }
-
-        if(container){
-            //public functions
-            FP.version = '3.0.4';
-            FP.setAutoScrolling = setAutoScrolling;
-            FP.setRecordHistory = setRecordHistory;
-            FP.setScrollingSpeed = setScrollingSpeed;
-            FP.setFitToSection = setFitToSection;
-            FP.setLockAnchors = setLockAnchors;
-            FP.setMouseWheelScrolling = setMouseWheelScrolling;
-            FP.setAllowScrolling = setAllowScrolling;
-            FP.setKeyboardScrolling = setKeyboardScrolling;
-            FP.moveSectionUp = moveSectionUp;
-            FP.moveSectionDown = moveSectionDown;
-            FP.silentMoveTo = silentMoveTo;
-            FP.moveTo = moveTo;
-            FP.moveSlideRight = moveSlideRight;
-            FP.moveSlideLeft = moveSlideLeft;
-            FP.fitToSection = fitToSection;
-            FP.reBuild = reBuild;
-            FP.setResponsive = setResponsive;
-            FP.getFullpageData = options;
-            FP.destroy = destroy;
-            FP.getActiveSection = getActiveSection;
-            FP.getActiveSlide = getActiveSlide;
-
-            FP.test = {
-                top: '0px',
-                translate3d: 'translate3d(0px, 0px, 0px)',
-                translate3dH: (function(){
-                    var a = [];
-                    for(var i = 0; i < $(options.sectionSelector, container).length; i++){
-                        a.push('translate3d(0px, 0px, 0px)');
-                    }
-                    return a;
-                })(),
-                left: (function(){
-                    var a = [];
-                    for(var i = 0; i < $(options.sectionSelector, container).length; i++){
-                        a.push(0);
-                    }
-                    return a;
-                })(),
-                options: options,
-                setAutoScrolling: setAutoScrolling
-            };
-
-            //functions we want to share across files but which are not
-            //mean to be used on their own by developers
-            FP.shared = {
-                afterRenderActions: afterRenderActions
-            };
-
-            window.fullpage_api = FP;
-
-            init();
-
-            bindEvents();
-        }
-
-        function init(){
-            //if css3 is not supported, it will use jQuery animations
-            if(options.css3){
-                options.css3 = support3d();
-            }
-
-            options.scrollBar = options.scrollBar || options.hybrid;
-
-            setOptionsFromDOM();
-            prepareDom();
-            setAllowScrolling(true);
-            setMouseHijack(true);
-            setAutoScrolling(options.autoScrolling, 'internal');
-            responsive();
-
-            //setting the class for the body element
-            setBodyClass();
-
-            if(document.readyState === 'complete'){
-                scrollToAnchor();
-            }
-            window.addEventListener('load', scrollToAnchor);
-
-            //if we use scrollOverflow we'll fire afterRender in the scrolloverflow file
-            if(!options.scrollOverflow){
-                afterRenderActions();
-            }
-        }
-
-        function bindEvents(){
-
-            //when scrolling...
-            window.addEventListener('scroll', scrollHandler);
-
-            //detecting any change on the URL to scroll to the given anchor link
-            //(a way to detect back history button as we play with the hashes on the URL)
-            window.addEventListener('hashchange', hashChangeHandler);
-
-            //when opening a new tab (ctrl + t), `control` won't be pressed when coming back.
-            window.addEventListener('blur', blurHandler);
-
-            //when resizing the site, we adjust the heights of the sections, slimScroll...
-            window.addEventListener('resize', resizeHandler);
-
-            //Sliding with arrow keys, both, vertical and horizontal
-            document.addEventListener('keydown', keydownHandler);
-
-            //to prevent scrolling while zooming
-            document.addEventListener('keyup', keyUpHandler);
-
-            //Scrolls to the section when clicking the navigation bullet
-            //simulating the jQuery .on('click') event using delegation
-            ['click', 'touchstart'].forEach(function(eventName){
-                document.addEventListener(eventName, delegatedEvents);
-            });
-
-            /**
-            * Applying normalScroll elements.
-            * Ignoring the scrolls over the specified selectors.
-            */
-            if(options.normalScrollElements){
-                ['mouseenter', 'touchstart'].forEach(function(eventName){
-                    forMouseLeaveOrTouch(eventName, false);
-                });
-
-                ['mouseleave', 'touchend'].forEach(function(eventName){
-                   forMouseLeaveOrTouch(eventName, true);
-                });
-            }
-        }
-
-        function delegatedEvents(e){
-            var target = e.target;
-
-            if(target && closest(target, SECTION_NAV_SEL + ' a')){
-                sectionBulletHandler.call(target, e);
-            }
-            else if(matches(target, SECTION_NAV_TOOLTIP_SEL)){
-                tooltipTextHandler.call(target);
-            }
-            else if(matches(target, SLIDES_ARROW_SEL)){
-                slideArrowHandler.call(target, e);
-            }
-            else if(matches(target, SLIDES_NAV_LINK_SEL) || closest(target, SLIDES_NAV_LINK_SEL) != null){
-                slideBulletHandler.call(target, e);
-            }
-            else if(closest(target, options.menu + ' [data-menuanchor]')){
-                menuItemsHandler.call(target, e);
-            }
-        }
-
-        function forMouseLeaveOrTouch(eventName, allowScrolling){
-            //a way to pass arguments to the onMouseEnterOrLeave function
-            document['fp_' + eventName] = allowScrolling;
-            document.addEventListener(eventName, onMouseEnterOrLeave, true); //capturing phase
-        }
-
-        function onMouseEnterOrLeave(e) {
-            if(e.target == document){
-                return;
-            }
-            var normalSelectors = options.normalScrollElements.split(',');
-            normalSelectors.forEach(function(normalSelector){
-                if(closest(e.target, normalSelector) != null){
-                    setMouseHijack(document['fp_' + e.type]); //e.type = eventName
-                }
-            });
-        }
-
-        /**
-        * Setting options from DOM elements if they are not provided.
-        */
-        function setOptionsFromDOM(){
-
-            //no anchors option? Checking for them in the DOM attributes
-            if(!options.anchors.length){
-                var attrName = '[data-anchor]';
-                var anchors = $(options.sectionSelector.split(',').join(attrName + ',') + attrName, container);
-                if(anchors.length){
-                    g_initialAnchorsInDom = true;
-                    anchors.forEach(function(item){
-                        options.anchors.push(item.getAttribute('data-anchor').toString());
-                    });
-                }
-            }
-
-            //no tooltips option? Checking for them in the DOM attributes
-            if(!options.navigationTooltips.length){
-                var attrName = '[data-tooltip]';
-                var tooltips = $(options.sectionSelector.split(',').join(attrName + ',') + attrName, container);
-                if(tooltips.length){
-                    tooltips.forEach(function(item){
-                        options.navigationTooltips.push(item.getAttribute('data-tooltip').toString());
-                    });
-                }
-            }
-        }
-
-        /**
-        * Works over the DOM structure to set it up for the current fullpage options.
-        */
-        function prepareDom(){
-            css(container, {
-                'height': '100%',
-                'position': 'relative'
-            });
-
-            //adding a class to recognize the container internally in the code
-            addClass(container, WRAPPER);
-            addClass($('html'), ENABLED);
-
-            //due to https://github.com/alvarotrigo/fullPage.js/issues/1502
-            windowsHeight = getWindowHeight();
-
-            removeClass(container, DESTROYED); //in case it was destroyed before initializing it again
-
-            addInternalSelectors();
-
-            var sections = $(SECTION_SEL);
-
-            //styling the sections / slides / menu
-            for(var i = 0; i<sections.length; i++){
-                var sectionIndex = i;
-                var section = sections[i];
-                var slides = $(SLIDE_SEL, section);
-                var numSlides = slides.length;
-
-                //caching the original styles to add them back on destroy('all')
-                section.setAttribute('data-fp-styles', section.getAttribute('style'));
-
-                styleSection(section, sectionIndex);
-                styleMenu(section, sectionIndex);
-
-                // if there's any slide
-                if (numSlides > 0) {
-                    styleSlides(section, slides, numSlides);
-                }else{
-                    if(options.verticalCentered){
-                        addTableClass(section);
-                    }
-                }
-            }
-
-            //fixed elements need to be moved out of the plugin container due to problems with CSS3.
-            if(options.fixedElements && options.css3){
-                $(options.fixedElements).forEach(function(item){
-                    $body.appendChild(item);
-                });
-            }
-
-            //vertical centered of the navigation + active bullet
-            if(options.navigation){
-                addVerticalNavigation();
-            }
-
-            enableYoutubeAPI();
-
-            if(options.scrollOverflow){
-                scrollBarHandler = options.scrollOverflowHandler.init(options);
-            }
-        }
-
-        /**
-        * Styles the horizontal slides for a section.
-        */
-        function styleSlides(section, slides, numSlides){
-            var sliderWidth = numSlides * 100;
-            var slideWidth = 100 / numSlides;
-
-            var slidesWrapper = document.createElement('div');
-            slidesWrapper.className = SLIDES_WRAPPER; //fp-slides
-            wrapAll(slides, slidesWrapper);
-
-            var slidesContainer = document.createElement('div');
-            slidesContainer.className = SLIDES_CONTAINER; //fp-slidesContainer
-            wrapAll(slides, slidesContainer);
-
-            css($(SLIDES_CONTAINER_SEL, section), {'width': sliderWidth + '%'});
-
-            if(numSlides > 1){
-                if(options.controlArrows){
-                    createSlideArrows(section);
-                }
-
-                if(options.slidesNavigation){
-                    addSlidesNavigation(section, numSlides);
-                }
-            }
-
-            slides.forEach(function(slide) {
-                css(slide, {'width': slideWidth + '%'});
-
-                if(options.verticalCentered){
-                    addTableClass(slide);
-                }
-            });
-
-            var startingSlide = $(SLIDE_ACTIVE_SEL, section)[0];
-
-            //if the slide won't be an starting point, the default will be the first one
-            //the active section isn't the first one? Is not the first slide of the first section? Then we load that section/slide by default.
-            if( startingSlide != null && (index($(SECTION_ACTIVE_SEL), SECTION_SEL) !== 0 || (index($(SECTION_ACTIVE_SEL), SECTION_SEL) === 0 && index(startingSlide) !== 0))){
-                silentLandscapeScroll(startingSlide, 'internal');
-            }else{
-                addClass(slides[0], ACTIVE);
-            }
-        }
-
-        /**
-        * Styling vertical sections
-        */
-        function styleSection(section, index){
-            //if no active section is defined, the 1st one will be the default one
-            if(!index && $(SECTION_ACTIVE_SEL)[0] == null) {
-                addClass(section, ACTIVE);
-            }
-            startingSection = $(SECTION_ACTIVE_SEL)[0];
-
-            css(section, {'height': windowsHeight + 'px'});
-
-            if(options.paddingTop){
-                css(section, {'padding-top': options.paddingTop});
-            }
-
-            if(options.paddingBottom){
-                css(section, {'padding-bottom': options.paddingBottom});
-            }
-
-            if (typeof options.sectionsColor[index] !==  'undefined') {
-                css(section, {'background-color': options.sectionsColor[index]});
-            }
-
-            if (typeof options.anchors[index] !== 'undefined') {
-                section.setAttribute('data-anchor', options.anchors[index]);
-            }
-        }
-
-        /**
-        * Sets the data-anchor attributes to the menu elements and activates the current one.
-        */
-        function styleMenu(section, index){
-            if (typeof options.anchors[index] !== 'undefined') {
-                //activating the menu / nav element on load
-                if(hasClass(section, ACTIVE)){
-                    activateMenuAndNav(options.anchors[index], index);
-                }
-            }
-
-            //moving the menu outside the main container if it is inside (avoid problems with fixed positions when using CSS3 tranforms)
-            if(options.menu && options.css3 && closest($(options.menu)[0], WRAPPER_SEL) != null){
-                $body.appendChild($(options.menu)[0]);
-            }
-        }
-
-        /**
-        * Adds internal classes to be able to provide customizable selectors
-        * keeping the link with the style sheet.
-        */
-        function addInternalSelectors(){
-            addClass($(options.sectionSelector, container), SECTION);
-            addClass($(options.slideSelector, container), SLIDE);
-        }
-
-        /**
-        * Creates the control arrows for the given section
-        */
-        function createSlideArrows(section){
-            var arrows = [createElementFromHTML('<div class="' + SLIDES_ARROW_PREV + '"></div>'), createElementFromHTML('<div class="' + SLIDES_ARROW_NEXT + '"></div>')];
-            after($(SLIDES_WRAPPER_SEL, section)[0], arrows);
-
-            if(options.controlArrowColor !== '#fff'){
-                css($(SLIDES_ARROW_NEXT_SEL, section), {'border-color': 'transparent transparent transparent '+options.controlArrowColor});
-                css($(SLIDES_ARROW_PREV_SEL, section), {'border-color': 'transparent '+ options.controlArrowColor + ' transparent transparent'});
-            }
-
-            if(!options.loopHorizontal){
-                hide($(SLIDES_ARROW_PREV_SEL, section));
-            }
-        }
-
-        /**
-        * Creates a vertical navigation bar.
-        */
-        function addVerticalNavigation(){
-            var navigation = document.createElement('div');
-            navigation.setAttribute('id', SECTION_NAV);
-
-            var divUl = document.createElement('ul');
-            navigation.appendChild(divUl);
-
-            appendTo(navigation, $body);
-            var nav = $(SECTION_NAV_SEL)[0];
-
-            addClass(nav, 'fp-' + options.navigationPosition);
-
-            if(options.showActiveTooltip){
-                addClass(nav, SHOW_ACTIVE_TOOLTIP);
-            }
-
-            var li = '';
-
-            for (var i = 0; i < $(SECTION_SEL).length; i++) {
-                var link = '';
-                if (options.anchors.length) {
-                    link = options.anchors[i];
-                }
-
-                li += '<li><a href="#' + link + '"><span class="fp-sr-only">' + getBulletLinkName(i, 'Section') + '</span><span></span></a>';
-
-                // Only add tooltip if needed (defined by user)
-                var tooltip = options.navigationTooltips[i];
-
-                if (typeof tooltip !== 'undefined' && tooltip !== '') {
-                    li += '<div class="' + SECTION_NAV_TOOLTIP + ' fp-' + options.navigationPosition + '">' + tooltip + '</div>';
-                }
-
-                li += '</li>';
-            }
-            $('ul', nav)[0].innerHTML = li;
-
-            //centering it vertically
-            css($(SECTION_NAV_SEL), {'margin-top': '-' + ($(SECTION_NAV_SEL)[0].offsetHeight/2) + 'px'});
-
-            //activating the current active section
-
-            var bullet = $('li', $(SECTION_NAV_SEL)[0])[index($(SECTION_ACTIVE_SEL)[0], SECTION_SEL)];
-            addClass($('a', bullet), ACTIVE);
-        }
-
-        /**
-        * Gets the name for screen readers for a section/slide navigation bullet.
-        */
-        function getBulletLinkName(i, defaultName){
-            return options.navigationTooltips[i]
-                || options.anchors[i]
-                || defaultName + ' ' + (i+1)
-        }
-
-        /*
-        * Enables the Youtube videos API so we can control their flow if necessary.
-        */
-        function enableYoutubeAPI(){
-            $('iframe[src*="youtube.com/embed/"]', container).forEach(function(item){
-                addURLParam(item, 'enablejsapi=1');
-            });
-        }
-
-        /**
-        * Adds a new parameter and its value to the `src` of a given element
-        */
-        function addURLParam(element, newParam){
-            var originalSrc = element.getAttribute('src');
-            element.setAttribute('src', originalSrc + getUrlParamSign(originalSrc) + newParam);
-        }
-
-        /*
-        * Returns the prefix sign to use for a new parameter in an existen URL.
-        *
-        * @return {String}  ? | &
-        */
-        function getUrlParamSign(url){
-            return ( !/\?/.test( url ) ) ? '?' : '&';
-        }
-
-        /**
-        * Actions and callbacks to fire afterRender
-        */
-        function afterRenderActions(){
-            var section = $(SECTION_ACTIVE_SEL)[0];
-
-            addClass(section, COMPLETELY);
-
-            lazyLoad(section);
-            playMedia(section);
-
-            if(options.scrollOverflow){
-                options.scrollOverflowHandler.afterLoad();
-            }
-
-            if(isDestinyTheStartingSection() && isFunction(options.afterLoad) ){
-                fireCallback('afterLoad', {
-                    activeSection: null,
-                    element: section,
-                    direction: null,
-
-                    //for backwards compatibility callback (to be removed in a future!)
-                    anchorLink: section.getAttribute('data-anchor'),
-                    sectionIndex: index(section, SECTION_SEL)
-                });
-            }
-
-            if(isFunction(options.afterRender)){
-                fireCallback('afterRender');
-            }
-        }
-
-        /**
-        * Determines if the URL anchor destiny is the starting section (the one using 'active' class before initialization)
-        */
-        function isDestinyTheStartingSection(){
-            var destinationSection = getSectionByAnchor(getAnchorsURL().section);
-            return !destinationSection || typeof destinationSection !=='undefined' && index(destinationSection) === index(startingSection);
-        }
-
-        var isScrolling = false;
-        var lastScroll = 0;
-
-        //when scrolling...
-        function scrollHandler(){
-            var currentSection;
-
-            if(!options.autoScrolling || options.scrollBar){
-                var currentScroll = getScrollTop();
-                var scrollDirection = getScrollDirection(currentScroll);
-                var visibleSectionIndex = 0;
-                var screen_mid = currentScroll + (getWindowHeight() / 2.0);
-                var isAtBottom = $body.offsetHeight - getWindowHeight() === currentScroll;
-                var sections =  $(SECTION_SEL);
-
-                //when using `auto-height` for a small last section it won't be centered in the viewport
-                if(isAtBottom){
-                    visibleSectionIndex = sections.length - 1;
-                }
-                //is at top? when using `auto-height` for a small first section it won't be centered in the viewport
-                else if(!currentScroll){
-                    visibleSectionIndex = 0;
-                }
-
-                //taking the section which is showing more content in the viewport
-                else{
-                    for (var i = 0; i < sections.length; ++i) {
-                        var section = sections[i];
-
-                        // Pick the the last section which passes the middle line of the screen.
-                        if (section.offsetTop <= screen_mid)
-                        {
-                            visibleSectionIndex = i;
-                        }
-                    }
-                }
-
-                if(isCompletelyInViewPort(scrollDirection)){
-                    if(!hasClass($(SECTION_ACTIVE_SEL)[0], COMPLETELY)){
-                        addClass($(SECTION_ACTIVE_SEL)[0], COMPLETELY);
-                        removeClass(siblings($(SECTION_ACTIVE_SEL)[0]), COMPLETELY);
-                    }
-                }
-
-                //geting the last one, the current one on the screen
-                currentSection = sections[visibleSectionIndex];
-
-                //setting the visible section as active when manually scrolling
-                //executing only once the first time we reach the section
-                if(!hasClass(currentSection, ACTIVE)){
-                    isScrolling = true;
-                    var leavingSection = $(SECTION_ACTIVE_SEL)[0];
-                    var leavingSectionIndex = index(leavingSection, SECTION_SEL) + 1;
-                    var yMovement = getYmovement(currentSection);
-                    var anchorLink  = currentSection.getAttribute('data-anchor');
-                    var sectionIndex = index(currentSection, SECTION_SEL) + 1;
-                    var activeSlide = $(SLIDE_ACTIVE_SEL, currentSection)[0];
-                    var slideIndex;
-                    var slideAnchorLink;
-                    var callbacksParams = {
-                        activeSection: leavingSection,
-                        sectionIndex: sectionIndex -1,
-                        anchorLink: anchorLink,
-                        element: currentSection,
-                        leavingSection: leavingSectionIndex,
-                        direction: yMovement
-                    };
-
-                    if(activeSlide){
-                        slideAnchorLink = activeSlide.getAttribute('data-anchor');
-                        slideIndex = index(activeSlide);
-                    }
-
-                    if(canScroll){
-                        addClass(currentSection, ACTIVE);
-                        removeClass(siblings(currentSection), ACTIVE);
-
-                        if(isFunction( options.onLeave )){
-                            fireCallback('onLeave', callbacksParams);
-                        }
-                        if(isFunction( options.afterLoad )){
-                            fireCallback('afterLoad', callbacksParams);
-                        }
-
-                        stopMedia(leavingSection);
-                        lazyLoad(currentSection);
-                        playMedia(currentSection);
-
-                        activateMenuAndNav(anchorLink, sectionIndex - 1);
-
-                        if(options.anchors.length){
-                            //needed to enter in hashChange event when using the menu with anchor links
-                            lastScrolledDestiny = anchorLink;
-                        }
-                        setState(slideIndex, slideAnchorLink, anchorLink, sectionIndex);
-                    }
-
-                    //small timeout in order to avoid entering in hashChange event when scrolling is not finished yet
-                    clearTimeout(scrollId);
-                    scrollId = setTimeout(function(){
-                        isScrolling = false;
-                    }, 100);
-                }
-
-                if(options.fitToSection){
-                    //for the auto adjust of the viewport to fit a whole section
-                    clearTimeout(scrollId2);
-
-                    scrollId2 = setTimeout(function(){
-                        //checking it again in case it changed during the delay
-                        if(options.fitToSection &&
-
-                            //is the destination element bigger than the viewport?
-                            $(SECTION_ACTIVE_SEL)[0].offsetHeight <= windowsHeight
-                        ){
-                            fitToSection();
-                        }
-                    }, options.fitToSectionDelay);
-                }
-            }
-        }
-
-        /**
-        * Fits the site to the nearest active section
-        */
-        function fitToSection(){
-            //checking fitToSection again in case it was set to false before the timeout delay
-            if(canScroll){
-                //allows to scroll to an active section and
-                //if the section is already active, we prevent firing callbacks
-                isResizing = true;
-
-                scrollPage($(SECTION_ACTIVE_SEL)[0]);
-                isResizing = false;
-            }
-        }
-
-        /**
-        * Determines whether the active section has seen in its whole or not.
-        */
-        function isCompletelyInViewPort(movement){
-            var top = $(SECTION_ACTIVE_SEL)[0].offsetTop;
-            var bottom = top + getWindowHeight();
-
-            if(movement == 'up'){
-                return bottom >= (getScrollTop() + getWindowHeight());
-            }
-            return top <= getScrollTop();
-        }
-
-        /**
-        * Gets the directon of the the scrolling fired by the scroll event.
-        */
-        function getScrollDirection(currentScroll){
-            var direction = currentScroll > lastScroll ? 'down' : 'up';
-
-            lastScroll = currentScroll;
-
-            //needed for auto-height sections to determine if we want to scroll to the top or bottom of the destination
-            previousDestTop = currentScroll;
-
-            return direction;
-        }
-
-        /**
-        * Determines the way of scrolling up or down:
-        * by 'automatically' scrolling a section or by using the default and normal scrolling.
-        */
-        function scrolling(type){
-            if (!isScrollAllowed.m[type]){
-                return;
-            }
-
-            var scrollSection = (type === 'down') ? moveSectionDown : moveSectionUp;
-
-            if(options.scrollOverflow){
-                var scrollable = options.scrollOverflowHandler.scrollable($(SECTION_ACTIVE_SEL)[0]);
-                var check = (type === 'down') ? 'bottom' : 'top';
-
-                if(scrollable != null ){
-                    //is the scrollbar at the start/end of the scroll?
-                    if(options.scrollOverflowHandler.isScrolled(check, scrollable)){
-                        scrollSection();
-                    }else{
-                        return true;
-                    }
-                }else{
-                    // moved up/down
-                    scrollSection();
-                }
-            }else{
-                // moved up/down
-                scrollSection();
-            }
-        }
-
-        /*
-        * Preventing bouncing in iOS #2285
-        */
-        function preventBouncing(e){
-            if(options.autoScrolling && isReallyTouch(e)){
-                //preventing the easing on iOS devices
-                preventDefault(e);
-            }
-        }
-
-        var touchStartY = 0;
-        var touchStartX = 0;
-        var touchEndY = 0;
-        var touchEndX = 0;
-
-        /* Detecting touch events
-
-        * As we are changing the top property of the page on scrolling, we can not use the traditional way to detect it.
-        * This way, the touchstart and the touch moves shows an small difference between them which is the
-        * used one to determine the direction.
-        */
-        function touchMoveHandler(e){
-            var activeSection = closest(e.target, SECTION_SEL);
-
-            // additional: if one of the normalScrollElements isn't within options.normalScrollElementTouchThreshold hops up the DOM chain
-            if (isReallyTouch(e) ) {
-
-                if(options.autoScrolling){
-                    //preventing the easing on iOS devices
-                    preventDefault(e);
-                }
-
-                var touchEvents = getEventsPage(e);
-
-                touchEndY = touchEvents.y;
-                touchEndX = touchEvents.x;
-
-                //if movement in the X axys is greater than in the Y and the currect section has slides...
-                if ($(SLIDES_WRAPPER_SEL, activeSection).length && Math.abs(touchStartX - touchEndX) > (Math.abs(touchStartY - touchEndY))) {
-
-                    //is the movement greater than the minimum resistance to scroll?
-                    if (!slideMoving && Math.abs(touchStartX - touchEndX) > (window.innerWidth / 100 * options.touchSensitivity)) {
-                        if (touchStartX > touchEndX) {
-                            if(isScrollAllowed.m.right){
-                                moveSlideRight(activeSection); //next
-                            }
-                        } else {
-                            if(isScrollAllowed.m.left){
-                                moveSlideLeft(activeSection); //prev
-                            }
-                        }
-                    }
-                }
-
-                //vertical scrolling (only when autoScrolling is enabled)
-                else if(options.autoScrolling && canScroll){
-
-                    //is the movement greater than the minimum resistance to scroll?
-                    if (Math.abs(touchStartY - touchEndY) > (window.innerHeight / 100 * options.touchSensitivity)) {
-                        if (touchStartY > touchEndY) {
-                            scrolling('down');
-                        } else if (touchEndY > touchStartY) {
-                            scrolling('up');
-                        }
-                    }
-                }
-            }
-        }
-
-        /**
-        * As IE >= 10 fires both touch and mouse events when using a mouse in a touchscreen
-        * this way we make sure that is really a touch event what IE is detecting.
-        */
-        function isReallyTouch(e){
-            //if is not IE   ||  IE is detecting `touch` or `pen`
-            return typeof e.pointerType === 'undefined' || e.pointerType != 'mouse';
-        }
-
-        /**
-        * Handler for the touch start event.
-        */
-        function touchStartHandler(e){
-
-            //stopping the auto scroll to adjust to a section
-            if(options.fitToSection){
-                activeAnimation = false;
-            }
-
-            if(isReallyTouch(e)){
-                var touchEvents = getEventsPage(e);
-                touchStartY = touchEvents.y;
-                touchStartX = touchEvents.x;
-            }
-        }
-
-        /**
-        * Gets the average of the last `number` elements of the given array.
-        */
-        function getAverage(elements, number){
-            var sum = 0;
-
-            //taking `number` elements from the end to make the average, if there are not enought, 1
-            var lastElements = elements.slice(Math.max(elements.length - number, 1));
-
-            for(var i = 0; i < lastElements.length; i++){
-                sum = sum + lastElements[i];
-            }
-
-            return Math.ceil(sum/number);
-        }
-
-        /**
-         * Detecting mousewheel scrolling
-         *
-         * http://blogs.sitepointstatic.com/examples/tech/mouse-wheel/index.html
-         * http://www.sitepoint.com/html5-javascript-mouse-wheel/
-         */
-        var prevTime = new Date().getTime();
-
-        function MouseWheelHandler(e) {
-            var curTime = new Date().getTime();
-            var isNormalScroll = hasClass($(COMPLETELY_SEL)[0], NORMAL_SCROLL);
-
-            //is scroll allowed?
-            if (!isScrollAllowed.m.down && !isScrollAllowed.m.up) {
-                preventDefault(e);
-                return false;
-            }
-
-            //autoscrolling and not zooming?
-            if(options.autoScrolling && !controlPressed && !isNormalScroll){
-                // cross-browser wheel delta
-                e = e || window.event;
-                var value = e.wheelDelta || -e.deltaY || -e.detail;
-                var delta = Math.max(-1, Math.min(1, value));
-
-                var horizontalDetection = typeof e.wheelDeltaX !== 'undefined' || typeof e.deltaX !== 'undefined';
-                var isScrollingVertically = (Math.abs(e.wheelDeltaX) < Math.abs(e.wheelDelta)) || (Math.abs(e.deltaX ) < Math.abs(e.deltaY) || !horizontalDetection);
-
-                //Limiting the array to 150 (lets not waste memory!)
-                if(scrollings.length > 149){
-                    scrollings.shift();
-                }
-
-                //keeping record of the previous scrollings
-                scrollings.push(Math.abs(value));
-
-                //preventing to scroll the site on mouse wheel when scrollbar is present
-                if(options.scrollBar){
-                   preventDefault(e);
-                }
-
-                //time difference between the last scroll and the current one
-                var timeDiff = curTime-prevTime;
-                prevTime = curTime;
-
-                //haven't they scrolled in a while?
-                //(enough to be consider a different scrolling action to scroll another section)
-                if(timeDiff > 200){
-                    //emptying the array, we dont care about old scrollings for our averages
-                    scrollings = [];
-                }
-
-                if(canScroll){
-                    var averageEnd = getAverage(scrollings, 10);
-                    var averageMiddle = getAverage(scrollings, 70);
-                    var isAccelerating = averageEnd >= averageMiddle;
-
-                    //to avoid double swipes...
-                    if(isAccelerating && isScrollingVertically){
-                        //scrolling down?
-                        if (delta < 0) {
-                            scrolling('down');
-
-                        //scrolling up?
-                        }else {
-                            scrolling('up');
-                        }
-                    }
-                }
-
-                return false;
-            }
-
-            if(options.fitToSection){
-                //stopping the auto scroll to adjust to a section
-                activeAnimation = false;
-            }
-        }
-
-        /**
-        * Slides a slider to the given direction.
-        * Optional `section` param.
-        */
-        function moveSlide(direction, section){
-            var activeSection = section == null ? $(SECTION_ACTIVE_SEL)[0] : section;
-            var slides = $(SLIDES_WRAPPER_SEL, activeSection)[0];
-
-            // more than one slide needed and nothing should be sliding
-            if (slides == null || slideMoving || $(SLIDE_SEL, slides).length < 2) {
-                return;
-            }
-
-            var currentSlide = $(SLIDE_ACTIVE_SEL, slides)[0];
-            var destiny = null;
-
-            if(direction === 'left'){
-                destiny = prevUntil(currentSlide, SLIDE_SEL);
-            }else{
-                destiny = nextUntil(currentSlide, SLIDE_SEL);
-            }
-
-            //isn't there a next slide in the secuence?
-            if(destiny == null){
-                //respect loopHorizontal settin
-                if (!options.loopHorizontal) return;
-
-                var slideSiblings = siblings(currentSlide);
-                if(direction === 'left'){
-                    destiny = slideSiblings[slideSiblings.length - 1]; //last
-                }else{
-                    destiny = slideSiblings[0]; //first
-                }
-            }
-
-            slideMoving = true && !FP.test.isTesting;
-            landscapeScroll(slides, destiny, direction);
-        }
-
-        /**
-        * Maintains the active slides in the viewport
-        * (Because the `scroll` animation might get lost with some actions, such as when using continuousVertical)
-        */
-        function keepSlidesPosition(){
-            var activeSlides = $(SLIDE_ACTIVE_SEL);
-            for( var i =0; i<activeSlides.length; i++){
-                silentLandscapeScroll(activeSlides[i], 'internal');
-            }
-        }
-
-        var previousDestTop = 0;
-        /**
-        * Returns the destination Y position based on the scrolling direction and
-        * the height of the section.
-        */
-        function getDestinationPosition(element){
-            var elementHeight = element.offsetHeight;
-            var elementTop = element.offsetTop;
-
-            //top of the desination will be at the top of the viewport
-            var position = elementTop;
-            var isScrollingDown =  elementTop > previousDestTop;
-            var sectionBottom = position - windowsHeight + elementHeight;
-            var bigSectionsDestination = options.bigSectionsDestination;
-
-            //is the destination element bigger than the viewport?
-            if(elementHeight > windowsHeight){
-                //scrolling up?
-                if(!isScrollingDown && !bigSectionsDestination || bigSectionsDestination === 'bottom' ){
-                    position = sectionBottom;
-                }
-            }
-
-            //sections equal or smaller than the viewport height && scrolling down? ||  is resizing and its in the last section
-            else if(isScrollingDown || (isResizing && next(element) == null) ){
-                //The bottom of the destination will be at the bottom of the viewport
-                position = sectionBottom;
-            }
-
-            /*
-            Keeping record of the last scrolled position to determine the scrolling direction.
-            No conventional methods can be used as the scroll bar might not be present
-            AND the section might not be active if it is auto-height and didnt reach the middle
-            of the viewport.
-            */
-            previousDestTop = position;
-            return position;
-        }
-
-        /**
-        * Scrolls the site to the given element and scrolls to the slide if a callback is given.
-        */
-        function scrollPage(element, callback, isMovementUp){
-            if(element == null){ return; } //there's no element to scroll, leaving the function
-
-            var dtop = getDestinationPosition(element);
-            var slideAnchorLink;
-            var slideIndex;
-
-            //local variables
-            var v = {
-                element: element,
-                callback: callback,
-                isMovementUp: isMovementUp,
-                dtop: dtop,
-                yMovement: getYmovement(element),
-                anchorLink: element.getAttribute('data-anchor'),
-                sectionIndex: index(element, SECTION_SEL),
-                activeSlide: $(SLIDE_ACTIVE_SEL, element)[0],
-                activeSection: $(SECTION_ACTIVE_SEL)[0],
-                leavingSection: index($(SECTION_ACTIVE_SEL), SECTION_SEL) + 1,
-
-                //caching the value of isResizing at the momment the function is called
-                //because it will be checked later inside a setTimeout and the value might change
-                localIsResizing: isResizing
-            };
-
-            //quiting when destination scroll is the same as the current one
-            if((v.activeSection == element && !isResizing) || (options.scrollBar && getScrollTop() === v.dtop && !hasClass(element, AUTO_HEIGHT) )){ return; }
-
-            if(v.activeSlide != null){
-                slideAnchorLink = v.activeSlide.getAttribute('data-anchor');
-                slideIndex = index(v.activeSlide);
-            }
-
-            //callback (onLeave) if the site is not just resizing and readjusting the slides
-            if(!v.localIsResizing){
-                var direction = v.yMovement;
-
-                //required for continousVertical
-                if(typeof isMovementUp !== 'undefined'){
-                    direction = isMovementUp ? 'up' : 'down';
-                }
-
-                //for the callback
-                v.direction = direction;
-
-                if(isFunction(options.onLeave)){
-                    if(fireCallback('onLeave', v) === false){
-                        return;
-                    }
-                }
-            }
-
-            // If continuousVertical && we need to wrap around
-            if (options.autoScrolling && options.continuousVertical && typeof (v.isMovementUp) !== "undefined" &&
-                ((!v.isMovementUp && v.yMovement == 'up') || // Intending to scroll down but about to go up or
-                (v.isMovementUp && v.yMovement == 'down'))) { // intending to scroll up but about to go down
-
-                v = createInfiniteSections(v);
-            }
-
-            //pausing media of the leaving section (if we are not just resizing, as destinatino will be the same one)
-            if(!v.localIsResizing){
-                stopMedia(v.activeSection);
-            }
-
-            if(options.scrollOverflow){
-                options.scrollOverflowHandler.beforeLeave();
-            }
-
-            addClass(element, ACTIVE);
-            removeClass(siblings(element), ACTIVE);
-            lazyLoad(element);
-
-            if(options.scrollOverflow){
-                options.scrollOverflowHandler.onLeave();
-            }
-
-            //preventing from activating the MouseWheelHandler event
-            //more than once if the page is scrolling
-            canScroll = false || FP.test.isTesting;
-
-            setState(slideIndex, slideAnchorLink, v.anchorLink, v.sectionIndex);
-
-            performMovement(v);
-
-            //flag to avoid callingn `scrollPage()` twice in case of using anchor links
-            lastScrolledDestiny = v.anchorLink;
-
-            //avoid firing it twice (as it does also on scroll)
-            activateMenuAndNav(v.anchorLink, v.sectionIndex);
-        }
-
-        /**
-        * Dispatch events & callbacks making sure it does it on the right format, depending on
-        * whether v2compatible is being used or not.
-        */
-        function fireCallback(eventName, v){
-            var eventData = getEventData(eventName, v);
-
-            if(!options.v2compatible){
-                trigger(container, eventName, eventData);
-
-                if(options[eventName].apply(eventData[Object.keys(eventData)[0]], toArray(eventData)) === false){
-                    return false;
-                }
-            }
-            else{
-                if(options[eventName].apply(eventData[0], eventData.slice(1)) === false){
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        /**
-        * Makes sure to only create a Panel object if the element exist
-        */
-        function nullOrSection(el){
-            return el ? new Section(el) : null;
-        }
-
-        function nullOrSlide(el){
-            return el ? new Slide(el) : null;
-        }
-
-        /**
-        * Gets the event's data for the given event on the right format. Depending on whether
-        * v2compatible is being used or not.
-        */
-        function getEventData(eventName, v){
-            var paramsPerEvent;
-
-            if(!options.v2compatible){
-
-                //using functions to run only the necessary bits within the object
-                paramsPerEvent = {
-                    afterRender: function(){
-                        return {
-                            section: nullOrSection($(SECTION_ACTIVE_SEL)[0]),
-                            slide: nullOrSlide($(SLIDE_ACTIVE_SEL, $(SECTION_ACTIVE_SEL)[0])[0])
-                        };
-                    },
-                    onLeave: function(){
-                        return {
-                            origin: nullOrSection(v.activeSection),
-                            destination: nullOrSection(v.element),
-                            direction: v.direction
-                        };
-                    },
-
-                    afterLoad: function(){
-                        return paramsPerEvent.onLeave();
-                    },
-
-                    afterSlideLoad: function(){
-                        return {
-                            section: nullOrSection(v.section),
-                            origin: nullOrSlide(v.prevSlide),
-                            destination: nullOrSlide(v.destiny),
-                            direction: v.direction
-                        };
-                    },
-
-                    onSlideLeave: function(){
-                        return paramsPerEvent.afterSlideLoad();
-                    }
-                };
-            }
-            else{
-                paramsPerEvent = {
-                    afterRender: function(){ return [container]; },
-                    onLeave: function(){ return [v.activeSection, v.leavingSection, (v.sectionIndex + 1), v.direction]; },
-                    afterLoad: function(){ return [v.element, v.anchorLink, (v.sectionIndex + 1)]; },
-                    afterSlideLoad: function(){ return [v.destiny, v.anchorLink, (v.sectionIndex + 1), v.slideAnchor, v.slideIndex]; },
-                    onSlideLeave: function(){ return [v.prevSlide, v.anchorLink, (v.sectionIndex + 1), v.prevSlideIndex, v.direction, v.slideIndex]; },
-                };
-            }
-
-            return paramsPerEvent[eventName]();
-        }
-
-        /**
-        * Performs the vertical movement (by CSS3 or by jQuery)
-        */
-        function performMovement(v){
-            // using CSS3 translate functionality
-            if (options.css3 && options.autoScrolling && !options.scrollBar) {
-
-                // The first section can have a negative value in iOS 10. Not quite sure why: -0.0142822265625
-                // that's why we round it to 0.
-                var translate3d = 'translate3d(0px, -' + Math.round(v.dtop) + 'px, 0px)';
-                transformContainer(translate3d, true);
-
-                //even when the scrollingSpeed is 0 there's a little delay, which might cause the
-                //scrollingSpeed to change in case of using silentMoveTo();
-                if(options.scrollingSpeed){
-                    clearTimeout(afterSectionLoadsId);
-                    afterSectionLoadsId = setTimeout(function () {
-                        afterSectionLoads(v);
-                    }, options.scrollingSpeed);
-                }else{
-                    afterSectionLoads(v);
-                }
-            }
-
-            // using JS to animate
-            else{
-                var scrollSettings = getScrollSettings(v.dtop);
-                FP.test.top = -v.dtop + 'px';
-
-                scrollTo(scrollSettings.element, scrollSettings.options, options.scrollingSpeed, function(){
-                    if(options.scrollBar){
-
-                        /* Hack!
-                        The timeout prevents setting the most dominant section in the viewport as "active" when the user
-                        scrolled to a smaller section by using the mousewheel (auto scrolling) rather than draging the scroll bar.
-
-                        When using scrollBar:true It seems like the scroll events still getting propagated even after the scrolling animation has finished.
-                        */
-                        setTimeout(function(){
-                            afterSectionLoads(v);
-                        },30);
-                    }else{
-                        afterSectionLoads(v);
-                    }
-                });
-            }
-        }
-
-        /**
-        * Gets the scrolling settings depending on the plugin autoScrolling option
-        */
-        function getScrollSettings(top){
-            var scroll = {};
-
-            //top property animation
-            if(options.autoScrolling && !options.scrollBar){
-                scroll.options = -top;
-                scroll.element = $(WRAPPER_SEL)[0];
-            }
-
-            //window real scrolling
-            else{
-                scroll.options = top;
-                scroll.element = window;
-            }
-
-            return scroll;
-        }
-
-        /**
-        * Adds sections before or after the current one to create the infinite effect.
-        */
-        function createInfiniteSections(v){
-            // Scrolling down
-            if (!v.isMovementUp) {
-                // Move all previous sections to after the active section
-                after($(SECTION_ACTIVE_SEL)[0], prevAll(v.activeSection, SECTION_SEL).reverse());
-            }
-            else { // Scrolling up
-                // Move all next sections to before the active section
-                before($(SECTION_ACTIVE_SEL)[0], nextAll(v.activeSection, SECTION_SEL));
-            }
-
-            // Maintain the displayed position (now that we changed the element order)
-            silentScroll($(SECTION_ACTIVE_SEL)[0].offsetTop);
-
-            // Maintain the active slides visible in the viewport
-            keepSlidesPosition();
-
-            // save for later the elements that still need to be reordered
-            v.wrapAroundElements = v.activeSection;
-
-            // Recalculate animation variables
-            v.dtop = v.element.offsetTop;
-            v.yMovement = getYmovement(v.element);
-
-            //sections will temporally have another position in the DOM
-            //updating this values in case we need them
-            v.leavingSection = index(v.activeSection, SECTION_SEL) + 1;
-            v.sectionIndex = index(v.element, SECTION_SEL);
-
-            return v;
-        }
-
-        /**
-        * Fix section order after continuousVertical changes have been animated
-        */
-        function continuousVerticalFixSectionOrder (v) {
-            // If continuousVertical is in effect (and autoScrolling would also be in effect then),
-            // finish moving the elements around so the direct navigation will function more simply
-            if (v.wrapAroundElements == null) {
-                return;
-            }
-
-            if (v.isMovementUp) {
-                before($(SECTION_SEL)[0], v.wrapAroundElements);
-            }
-            else {
-                after($(SECTION_SEL)[$(SECTION_SEL).length-1], v.wrapAroundElements);
-            }
-
-            silentScroll($(SECTION_ACTIVE_SEL)[0].offsetTop);
-
-            // Maintain the active slides visible in the viewport
-            keepSlidesPosition();
-        }
-
-
-        /**
-        * Actions to do once the section is loaded.
-        */
-        function afterSectionLoads (v){
-            continuousVerticalFixSectionOrder(v);
-
-            //callback (afterLoad) if the site is not just resizing and readjusting the slides
-            if(isFunction(options.afterLoad) && !v.localIsResizing){
-                fireCallback('afterLoad', v);
-            }
-
-            if(options.scrollOverflow){
-                options.scrollOverflowHandler.afterLoad();
-            }
-
-            if(!v.localIsResizing){
-                playMedia(v.element);
-            }
-
-            addClass(v.element, COMPLETELY);
-            removeClass(siblings(v.element), COMPLETELY);
-
-            canScroll = true;
-
-            if(isFunction(v.callback)){
-                v.callback();
-            }
-        }
-
-        /**
-        * Sets the value for the given attribute from the `data-` attribute with the same suffix
-        * ie: data-srcset ==> srcset  |  data-src ==> src
-        */
-        function setSrc(element, attribute){
-            element.setAttribute(attribute, element.getAttribute('data-' + attribute));
-            element.removeAttribute('data-' + attribute);
-        }
-
-        /**
-        * Lazy loads image, video and audio elements.
-        */
-        function lazyLoad(destiny){
-            if (!options.lazyLoading){
-                return;
-            }
-
-            var panel = getSlideOrSection(destiny);
-
-            $('img[data-src], img[data-srcset], source[data-src], source[data-srcset], video[data-src], audio[data-src], iframe[data-src]', panel).forEach(function(element){
-                ['src', 'srcset'].forEach(function(type){
-                    var attribute = element.getAttribute('data-' + type);
-                    if(attribute != null && attribute){
-                        setSrc(element, type);
-                    }
-                });
-
-                if(matches(element, 'source')){
-                    var elementToPlay =  closest(element, 'video, audio');
-                    if(elementToPlay){
-                        elementToPlay.load();
-                    }
-                }
-            });
-        }
-
-        /**
-        * Plays video and audio elements.
-        */
-        function playMedia(destiny){
-            var panel = getSlideOrSection(destiny);
-
-            //playing HTML5 media elements
-            $('video, audio', panel).forEach(function(element){
-                if( element.hasAttribute('data-autoplay') && typeof element.play === 'function' ) {
-                    element.play();
-                }
-            });
-
-            //youtube videos
-            $('iframe[src*="youtube.com/embed/"]', panel).forEach(function(element){
-                if ( element.hasAttribute('data-autoplay') ){
-                    playYoutube(element);
-                }
-
-                //in case the URL was not loaded yet. On page load we need time for the new URL (with the API string) to load.
-                element.onload = function() {
-                    if ( element.hasAttribute('data-autoplay') ){
-                        playYoutube(element);
-                    }
-                };
-            });
-        }
-
-        /**
-        * Plays a youtube video
-        */
-        function playYoutube(element){
-            element.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-        }
-
-        /**
-        * Stops video and audio elements.
-        */
-        function stopMedia(destiny){
-            var panel = getSlideOrSection(destiny);
-
-            //stopping HTML5 media elements
-            $('video, audio', panel).forEach(function(element){
-                if( !element.hasAttribute('data-keepplaying') && typeof element.pause === 'function' ) {
-                    element.pause();
-                }
-            });
-
-            //youtube videos
-            $('iframe[src*="youtube.com/embed/"]', panel).forEach(function(element){
-                if( /youtube\.com\/embed\//.test(element.getAttribute('src')) && !element.hasAttribute('data-keepplaying')){
-                    element.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}','*');
-                }
-            });
-        }
-
-        /**
-        * Gets the active slide (or section) for the given section
-        */
-        function getSlideOrSection(destiny){
-            var slide = $(SLIDE_ACTIVE_SEL, destiny);
-            if( slide.length ) {
-                destiny = slide[0];
-            }
-
-            return destiny;
-        }
-
-        /**
-        * Scrolls to the anchor in the URL when loading the site
-        */
-        function scrollToAnchor(){
-            var anchors =  getAnchorsURL();
-            var sectionAnchor = anchors.section;
-            var slideAnchor = anchors.slide;
-
-            if(sectionAnchor){  //if theres any #
-                if(options.animateAnchor){
-                    scrollPageAndSlide(sectionAnchor, slideAnchor);
-                }else{
-                    silentMoveTo(sectionAnchor, slideAnchor);
-                }
-            }
-        }
-
-        /**
-        * Detecting any change on the URL to scroll to the given anchor link
-        * (a way to detect back history button as we play with the hashes on the URL)
-        */
-        function hashChangeHandler(){
-            if(!isScrolling && !options.lockAnchors){
-                var anchors = getAnchorsURL();
-                var sectionAnchor = anchors.section;
-                var slideAnchor = anchors.slide;
-
-                //when moving to a slide in the first section for the first time (first time to add an anchor to the URL)
-                var isFirstSlideMove =  (typeof lastScrolledDestiny === 'undefined');
-                var isFirstScrollMove = (typeof lastScrolledDestiny === 'undefined' && typeof slideAnchor === 'undefined' && !slideMoving);
-
-                if(sectionAnchor && sectionAnchor.length){
-                    /*in order to call scrollpage() only once for each destination at a time
-                    It is called twice for each scroll otherwise, as in case of using anchorlinks `hashChange`
-                    event is fired on every scroll too.*/
-                    if ((sectionAnchor && sectionAnchor !== lastScrolledDestiny) && !isFirstSlideMove
-                        || isFirstScrollMove
-                        || (!slideMoving && lastScrolledSlide != slideAnchor )){
-
-                        scrollPageAndSlide(sectionAnchor, slideAnchor);
-                    }
-                }
-            }
-        }
-
-        //gets the URL anchors (section and slide)
-        function getAnchorsURL(){
-            var section;
-            var slide;
-            var hash = window.location.hash;
-
-            if(hash.length){
-                //getting the anchor link in the URL and deleting the `#`
-                var anchorsParts =  hash.replace('#', '').split('/');
-
-                //using / for visual reasons and not as a section/slide separator #2803
-                var isFunkyAnchor = hash.indexOf('#/') > -1;
-
-                section = isFunkyAnchor ? '/' + anchorsParts[1] : decodeURIComponent(anchorsParts[0]);
-
-                var slideAnchor = isFunkyAnchor ? anchorsParts[2] : anchorsParts[1];
-                if(slideAnchor && slideAnchor.length){
-                    slide = decodeURIComponent(slideAnchor);
-                }
-            }
-
-            return {
-                section: section,
-                slide: slide
-            };
-        }
-
-        //Sliding with arrow keys, both, vertical and horizontal
-        function keydownHandler(e) {
-            clearTimeout(keydownId);
-
-            var activeElement = document.activeElement;
-            var keyCode = e.keyCode;
-
-            //tab?
-            if(keyCode === 9){
-                onTab(e);
-            }
-
-            else if(!matches(activeElement, 'textarea') && !matches(activeElement, 'input') && !matches(activeElement, 'select') &&
-                activeElement.getAttribute('contentEditable') !== "true" && activeElement.getAttribute('contentEditable') !== '' &&
-                options.keyboardScrolling && options.autoScrolling){
-
-                //preventing the scroll with arrow keys & spacebar & Page Up & Down keys
-                var keyControls = [40, 38, 32, 33, 34];
-                if(keyControls.indexOf(keyCode) > -1){
-                    preventDefault(e);
-                }
-
-                controlPressed = e.ctrlKey;
-
-                keydownId = setTimeout(function(){
-                    onkeydown(e);
-                },150);
-            }
-        }
-
-        function tooltipTextHandler(){
-            /*jshint validthis:true */
-            trigger(prev(this), 'click');
-        }
-
-        //to prevent scrolling while zooming
-        function keyUpHandler(e){
-            if(isWindowFocused){ //the keyup gets fired on new tab ctrl + t in Firefox
-                controlPressed = e.ctrlKey;
-            }
-        }
-
-        //binding the mousemove when the mouse's middle button is released
-        function mouseDownHandler(e){
-            //middle button
-            if (e.which == 2){
-                oldPageY = e.pageY;
-                container.addEventListener('mousemove', mouseMoveHandler);
-            }
-        }
-
-        //unbinding the mousemove when the mouse's middle button is released
-        function mouseUpHandler(e){
-            //middle button
-            if (e.which == 2){
-                container.removeEventListener('mousemove', mouseMoveHandler);
-            }
-        }
-
-        /**
-        * Makes sure the tab key will only focus elements within the current section/slide
-        * preventing this way from breaking the page.
-        * Based on "Modals and keyboard traps"
-        * from https://developers.google.com/web/fundamentals/accessibility/focus/using-tabindex
-        */
-        function onTab(e){
-            var isShiftPressed = e.shiftKey;
-            var activeElement = document.activeElement;
-            var focusableElements = getFocusables(getSlideOrSection($(SECTION_ACTIVE_SEL)[0]));
-
-            function preventAndFocusFirst(e){
-                preventDefault(e);
-                return focusableElements[0] ? focusableElements[0].focus() : null;
-            }
-
-            //outside any section or slide? Let's not hijack the tab!
-            if(isFocusOutside(e)){
-                return;
-            }
-
-            //is there an element with focus?
-            if(activeElement){
-                if(closest(activeElement, SECTION_ACTIVE_SEL + ',' + SECTION_ACTIVE_SEL + ' ' + SLIDE_ACTIVE_SEL) == null){
-                    activeElement = preventAndFocusFirst(e);
-                }
-            }
-
-            //no element if focused? Let's focus the first one of the section/slide
-            else{
-                preventAndFocusFirst(e);
-            }
-
-            //when reached the first or last focusable element of the section/slide
-            //we prevent the tab action to keep it in the last focusable element
-            if(!isShiftPressed && activeElement == focusableElements[focusableElements.length - 1] ||
-                isShiftPressed && activeElement == focusableElements[0]
-            ){
-                preventDefault(e);
-            }
-        }
-
-        /**
-        * Gets all the focusable elements inside the passed element.
-        */
-        function getFocusables(el){
-            return [].slice.call($(focusableElementsString, el)).filter(function(item) {
-                    return item.getAttribute('tabindex') !== '-1'
-                    //are also not hidden elements (or with hidden parents)
-                    && item.offsetParent !== null;
-            });
-        }
-
-        /**
-        * Determines whether the focus is outside fullpage.js sections/slides or not.
-        */
-        function isFocusOutside(e){
-            var allFocusables = getFocusables(document);
-            var currentFocusIndex = allFocusables.indexOf(document.activeElement);
-            var focusDestinationIndex = e.shiftKey ? currentFocusIndex - 1 : currentFocusIndex + 1;
-            var focusDestination = allFocusables[focusDestinationIndex];
-            var destinationItemSlide = nullOrSlide(closest(focusDestination, SLIDE_SEL));
-            var destinationItemSection = nullOrSection(closest(focusDestination, SECTION_SEL));
-
-            return !destinationItemSlide && !destinationItemSection;
-        }
-
-        //Scrolling horizontally when clicking on the slider controls.
-        function slideArrowHandler(){
-            /*jshint validthis:true */
-            var section = closest(this, SECTION_SEL);
-
-            /*jshint validthis:true */
-            if (hasClass(this, SLIDES_PREV)) {
-                if(isScrollAllowed.m.left){
-                    moveSlideLeft(section);
-                }
-            } else {
-                if(isScrollAllowed.m.right){
-                    moveSlideRight(section);
-                }
-            }
-        }
-
-        //when opening a new tab (ctrl + t), `control` won't be pressed when coming back.
-        function blurHandler(){
-            isWindowFocused = false;
-            controlPressed = false;
-        }
-
-        //Scrolls to the section when clicking the navigation bullet
-        function sectionBulletHandler(e){
-            preventDefault(e);
-
-            /*jshint validthis:true */
-            var indexBullet = index(closest(this, SECTION_NAV_SEL + ' li'));
-            scrollPage($(SECTION_SEL)[indexBullet]);
-        }
-
-        //Scrolls the slider to the given slide destination for the given section
-        function slideBulletHandler(e){
-            preventDefault(e);
-
-            /*jshint validthis:true */
-            var slides = $(SLIDES_WRAPPER_SEL, closest(this, SECTION_SEL))[0];
-            var destiny = $(SLIDE_SEL, slides)[index(closest(this, 'li'))];
-
-            landscapeScroll(slides, destiny);
-        }
-
-        //Menu item handler when not using anchors or using lockAnchors:true
-        function menuItemsHandler(e){
-            if($(options.menu)[0] && (options.lockAnchors || !options.anchors.length)){
-                preventDefault(e);
-                moveTo(this.getAttribute('data-menuanchor'));
-            }
-        }
-
-        /**
-        * Keydown event
-        */
-        function onkeydown(e){
-            var shiftPressed = e.shiftKey;
-
-            //do nothing if we can not scroll or we are not using horizotnal key arrows.
-            if(!canScroll && [37,39].indexOf(e.keyCode) < 0){
-                return;
-            }
-
-            switch (e.keyCode) {
-                //up
-                case 38:
-                case 33:
-                    if(isScrollAllowed.k.up){
-                        moveSectionUp();
-                    }
-                    break;
-
-                //down
-                case 32: //spacebar
-                    if(shiftPressed && isScrollAllowed.k.up){
-                        moveSectionUp();
-                        break;
-                    }
-                /* falls through */
-                case 40:
-                case 34:
-                    if(isScrollAllowed.k.down){
-                        moveSectionDown();
-                    }
-                    break;
-
-                //Home
-                case 36:
-                    if(isScrollAllowed.k.up){
-                        moveTo(1);
-                    }
-                    break;
-
-                //End
-                case 35:
-                     if(isScrollAllowed.k.down){
-                        moveTo( $(SECTION_SEL).length );
-                    }
-                    break;
-
-                //left
-                case 37:
-                    if(isScrollAllowed.k.left){
-                        moveSlideLeft();
-                    }
-                    break;
-
-                //right
-                case 39:
-                    if(isScrollAllowed.k.right){
-                        moveSlideRight();
-                    }
-                    break;
-
-                default:
-                    return; // exit this handler for other keys
-            }
-        }
-
-        /**
-        * Detecting the direction of the mouse movement.
-        * Used only for the middle button of the mouse.
-        */
-        var oldPageY = 0;
-        function mouseMoveHandler(e){
-            if(canScroll){
-                // moving up
-                if (e.pageY < oldPageY && isScrollAllowed.m.up){
-                    moveSectionUp();
-                }
-
-                // moving down
-                else if(e.pageY > oldPageY && isScrollAllowed.m.down){
-                    moveSectionDown();
-                }
-            }
-            oldPageY = e.pageY;
-        }
-
-        /**
-        * Scrolls horizontal sliders.
-        */
-        function landscapeScroll(slides, destiny, direction){
-            var section = closest(slides, SECTION_SEL);
-            var v = {
-                slides: slides,
-                destiny: destiny,
-                direction: direction,
-                destinyPos: {left: destiny.offsetLeft},
-                slideIndex: index(destiny),
-                section: section,
-                sectionIndex: index(section, SECTION_SEL),
-                anchorLink: section.getAttribute('data-anchor'),
-                slidesNav: $(SLIDES_NAV_SEL, section)[0],
-                slideAnchor: getAnchor(destiny),
-                prevSlide: $(SLIDE_ACTIVE_SEL, section)[0],
-                prevSlideIndex: index($(SLIDE_ACTIVE_SEL, section)[0]),
-
-                //caching the value of isResizing at the momment the function is called
-                //because it will be checked later inside a setTimeout and the value might change
-                localIsResizing: isResizing
-            };
-            v.xMovement = getXmovement(v.prevSlideIndex, v.slideIndex);
-
-            //important!! Only do it when not resizing
-            if(!v.localIsResizing){
-                //preventing from scrolling to the next/prev section when using scrollHorizontally
-                canScroll = false;
-            }
-
-            if(options.onSlideLeave){
-
-                //if the site is not just resizing and readjusting the slides
-                if(!v.localIsResizing && v.xMovement!=='none'){
-                    if(isFunction( options.onSlideLeave )){
-                        if( fireCallback('onSlideLeave', v) === false){
-                            slideMoving = false;
-                            return;
-                        }
-                    }
-                }
-            }
-
-            addClass(destiny, ACTIVE);
-            removeClass(siblings(destiny), ACTIVE);
-
-            if(!v.localIsResizing){
-                stopMedia(v.prevSlide);
-                lazyLoad(destiny);
-            }
-
-            if(!options.loopHorizontal && options.controlArrows){
-                //hidding it for the fist slide, showing for the rest
-                toggle($(SLIDES_ARROW_PREV_SEL, section), v.slideIndex!==0);
-
-                //hidding it for the last slide, showing for the rest
-                toggle($(SLIDES_ARROW_NEXT_SEL, section), next(destiny) != null);
-            }
-
-            //only changing the URL if the slides are in the current section (not for resize re-adjusting)
-            if(hasClass(section, ACTIVE) && !v.localIsResizing){
-                setState(v.slideIndex, v.slideAnchor, v.anchorLink, v.sectionIndex);
-            }
-
-            performHorizontalMove(slides, v, true);
-        }
-
-
-        function afterSlideLoads(v){
-            activeSlidesNavigation(v.slidesNav, v.slideIndex);
-
-            //if the site is not just resizing and readjusting the slides
-            if(!v.localIsResizing){
-                if(isFunction( options.afterSlideLoad )){
-                    fireCallback('afterSlideLoad', v);
-                }
-
-                //needs to be inside the condition to prevent problems with continuousVertical and scrollHorizontally
-                //and to prevent double scroll right after a windows resize
-                canScroll = true;
-
-                playMedia(v.destiny);
-            }
-
-            //letting them slide again
-            slideMoving = false;
-        }
-
-        /**
-        * Performs the horizontal movement. (CSS3 or jQuery)
-        *
-        * @param fireCallback {Bool} - determines whether or not to fire the callback
-        */
-        function performHorizontalMove(slides, v, fireCallback){
-            var destinyPos = v.destinyPos;
-
-            if(options.css3){
-                var translate3d = 'translate3d(-' + Math.round(destinyPos.left) + 'px, 0px, 0px)';
-
-                FP.test.translate3dH[v.sectionIndex] = translate3d;
-                css(addAnimation($(SLIDES_CONTAINER_SEL, slides)), getTransforms(translate3d));
-
-                afterSlideLoadsId = setTimeout(function(){
-                    if(fireCallback){
-                        afterSlideLoads(v);
-                    }
-                }, options.scrollingSpeed);
-            }else{
-                FP.test.left[v.sectionIndex] = Math.round(destinyPos.left);
-
-                scrollTo(slides, Math.round(destinyPos.left), options.scrollingSpeed, function(){
-                    if(fireCallback){
-                        afterSlideLoads(v);
-                    }
-                });
-            }
-        }
-
-        /**
-        * Sets the state for the horizontal bullet navigations.
-        */
-        function activeSlidesNavigation(slidesNav, slideIndex){
-            if(options.slidesNavigation && slidesNav != null){
-                removeClass($(ACTIVE_SEL, slidesNav), ACTIVE);
-                addClass( $('a', $('li', slidesNav)[slideIndex] ), ACTIVE);
-            }
-        }
-
-        var previousHeight = windowsHeight;
-
-        //when resizing the site, we adjust the heights of the sections, slimScroll...
-        function resizeHandler(){
-            //checking if it needs to get responsive
-            responsive();
-
-            // rebuild immediately on touch devices
-            if (isTouchDevice) {
-                var activeElement = document.activeElement;
-
-                //if the keyboard is NOT visible
-                if (!matches(activeElement, 'textarea') && !matches(activeElement, 'input') && !matches(activeElement, 'select')) {
-                    var currentHeight = getWindowHeight();
-
-                    //making sure the change in the viewport size is enough to force a rebuild. (20 % of the window to avoid problems when hidding scroll bars)
-                    if( Math.abs(currentHeight - previousHeight) > (20 * Math.max(previousHeight, currentHeight) / 100) ){
-                        resizeId = setTimeout(function(){
-                            reBuild(true);
-                            previousHeight = currentHeight;
-
-                            //issue #3336
-                            //when using Chrome we add a small timeout to get the right window height 
-                            //https://stackoverflow.com/a/12556928/1081396
-                            //https://stackoverflow.com/questions/13807810/ios-chrome-detection
-                        }, navigator.userAgent.match('CriOS') ? 50 : 0);
-                    }
-                }
-            }else{
-                //in order to call the functions only when the resize is finished
-                //http://stackoverflow.com/questions/4298612/jquery-how-to-call-resize-event-only-once-its-finished-resizing
-                clearTimeout(resizeId);
-
-                resizeId = setTimeout(function(){
-                    reBuild(true);
-                }, 350);
-            }
-        }
-
-        /**
-        * Checks if the site needs to get responsive and disables autoScrolling if so.
-        * A class `fp-responsive` is added to the plugin's container in case the user wants to use it for his own responsive CSS.
-        */
-        function responsive(){
-            var widthLimit = options.responsive || options.responsiveWidth; //backwards compatiblity
-            var heightLimit = options.responsiveHeight;
-
-            //only calculating what we need. Remember its called on the resize event.
-            var isBreakingPointWidth = widthLimit && window.innerWidth < widthLimit;
-            var isBreakingPointHeight = heightLimit && window.innerHeight < heightLimit;
-
-            if(widthLimit && heightLimit){
-                setResponsive(isBreakingPointWidth || isBreakingPointHeight);
-            }
-            else if(widthLimit){
-                setResponsive(isBreakingPointWidth);
-            }
-            else if(heightLimit){
-                setResponsive(isBreakingPointHeight);
-            }
-        }
-
-        /**
-        * Adds transition animations for the given element
-        */
-        function addAnimation(element){
-            var transition = 'all ' + options.scrollingSpeed + 'ms ' + options.easingcss3;
-
-            removeClass(element, NO_TRANSITION);
-            return css(element, {
-                '-webkit-transition': transition,
-                'transition': transition
-            });
-        }
-
-        /**
-        * Remove transition animations for the given element
-        */
-        function removeAnimation(element){
-            return addClass(element, NO_TRANSITION);
-        }
-
-        /**
-        * Activating the vertical navigation bullets according to the given slide name.
-        */
-        function activateNavDots(name, sectionIndex){
-            if(options.navigation && $(SECTION_NAV_SEL)[0] != null){
-                    removeClass($(ACTIVE_SEL, $(SECTION_NAV_SEL)[0]), ACTIVE);
-                if(name){
-                    addClass( $('a[href="#' + name + '"]', $(SECTION_NAV_SEL)[0]), ACTIVE);
-                }else{
-                    addClass($('a', $('li', $(SECTION_NAV_SEL)[0])[sectionIndex]), ACTIVE);
-                }
-            }
-        }
-
-        /**
-        * Activating the website main menu elements according to the given slide name.
-        */
-        function activateMenuElement(name){
-            var menu = $(options.menu)[0];
-            if(options.menu && menu != null){
-                removeClass($(ACTIVE_SEL, menu), ACTIVE);
-                addClass($('[data-menuanchor="'+name+'"]', menu), ACTIVE);
-            }
-        }
-
-        /**
-        * Sets to active the current menu and vertical nav items.
-        */
-        function activateMenuAndNav(anchor, index){
-            activateMenuElement(anchor);
-            activateNavDots(anchor, index);
-        }
-
-        /**
-        * Retuns `up` or `down` depending on the scrolling movement to reach its destination
-        * from the current section.
-        */
-        function getYmovement(destiny){
-            var fromIndex = index($(SECTION_ACTIVE_SEL)[0], SECTION_SEL);
-            var toIndex = index(destiny, SECTION_SEL);
-            if( fromIndex == toIndex){
-                return 'none';
-            }
-            if(fromIndex > toIndex){
-                return 'up';
-            }
-            return 'down';
-        }
-
-        /**
-        * Retuns `right` or `left` depending on the scrolling movement to reach its destination
-        * from the current slide.
-        */
-        function getXmovement(fromIndex, toIndex){
-            if( fromIndex == toIndex){
-                return 'none';
-            }
-            if(fromIndex > toIndex){
-                return 'left';
-            }
-            return 'right';
-        }
-
-        function addTableClass(element){
-            //In case we are styling for the 2nd time as in with reponsiveSlides
-            if(!hasClass(element, TABLE)){
-                var wrapper = document.createElement('div');
-                wrapper.className = TABLE_CELL;
-                wrapper.style.height = getTableHeight(element) + 'px';
-
-                addClass(element, TABLE);
-                wrapInner(element, wrapper);
-            }
-        }
-
-        function getTableHeight(element){
-            var sectionHeight = windowsHeight;
-
-            if(options.paddingTop || options.paddingBottom){
-                var section = element;
-                if(!hasClass(section, SECTION)){
-                    section = closest(element, SECTION_SEL);
-                }
-
-                var paddings = parseInt(getComputedStyle(section)['padding-top']) + parseInt(getComputedStyle(section)['padding-bottom']);
-                sectionHeight = (windowsHeight - paddings);
-            }
-
-            return sectionHeight;
-        }
-
-        /**
-        * Adds a css3 transform property to the container class with or without animation depending on the animated param.
-        */
-        function transformContainer(translate3d, animated){
-            if(animated){
-                addAnimation(container);
-            }else{
-                removeAnimation(container);
-            }
-
-            css(container, getTransforms(translate3d));
-            FP.test.translate3d = translate3d;
-
-            //syncronously removing the class after the animation has been applied.
-            setTimeout(function(){
-                removeClass(container, NO_TRANSITION);
-            },10);
-        }
-
-        /**
-        * Gets a section by its anchor / index
-        */
-        function getSectionByAnchor(sectionAnchor){
-            var section = $(SECTION_SEL + '[data-anchor="'+sectionAnchor+'"]', container)[0];
-            if(!section){
-                var sectionIndex = typeof sectionAnchor !== 'undefined' ? sectionAnchor -1 : 0;
-                section = $(SECTION_SEL)[sectionIndex];
-            }
-
-            return section;
-        }
-
-        /**
-        * Gets a slide inside a given section by its anchor / index
-        */
-        function getSlideByAnchor(slideAnchor, section){
-            var slide = $(SLIDE_SEL + '[data-anchor="'+slideAnchor+'"]', section)[0];
-            if(slide == null){
-                slideAnchor = typeof slideAnchor !== 'undefined' ? slideAnchor : 0;
-                slide = $(SLIDE_SEL, section)[slideAnchor];
-            }
-
-            return slide;
-        }
-
-        /**
-        * Scrolls to the given section and slide anchors
-        */
-        function scrollPageAndSlide(sectionAnchor, slideAnchor){
-            var section = getSectionByAnchor(sectionAnchor);
-
-            //do nothing if there's no section with the given anchor name
-            if(section == null) return;
-
-            var slide = getSlideByAnchor(slideAnchor, section);
-
-            //we need to scroll to the section and then to the slide
-            if (getAnchor(section) !== lastScrolledDestiny && !hasClass(section, ACTIVE)){
-                scrollPage(section, function(){
-                    scrollSlider(slide);
-                });
-            }
-            //if we were already in the section
-            else{
-                scrollSlider(slide);
-            }
-        }
-
-        /**
-        * Scrolls the slider to the given slide destination for the given section
-        */
-        function scrollSlider(slide){
-            if(slide != null){
-                landscapeScroll(closest(slide, SLIDES_WRAPPER_SEL), slide);
-            }
-        }
-
-        /**
-        * Creates a landscape navigation bar with dots for horizontal sliders.
-        */
-        function addSlidesNavigation(section, numSlides){
-            appendTo(createElementFromHTML('<div class="' + SLIDES_NAV + '"><ul></ul></div>'), section);
-            var nav = $(SLIDES_NAV_SEL, section)[0];
-
-            //top or bottom
-            addClass(nav, 'fp-' + options.slidesNavPosition);
-
-            for(var i=0; i< numSlides; i++){
-                appendTo(createElementFromHTML('<li><a href="#"><span class="fp-sr-only">'+ getBulletLinkName(i, 'Slide') +'</span><span></span></a></li>'), $('ul', nav)[0] );
-            }
-
-            //centering it
-            css(nav, {'margin-left': '-' + (nav.innerWidth/2) + 'px'});
-
-            addClass($('a', $('li', nav)[0] ), ACTIVE);
-        }
-
-
-        /**
-        * Sets the state of the website depending on the active section/slide.
-        * It changes the URL hash when needed and updates the body class.
-        */
-        function setState(slideIndex, slideAnchor, anchorLink, sectionIndex){
-            var sectionHash = '';
-
-            if(options.anchors.length && !options.lockAnchors){
-
-                //isn't it the first slide?
-                if(slideIndex){
-                    if(anchorLink != null){
-                        sectionHash = anchorLink;
-                    }
-
-                    //slide without anchor link? We take the index instead.
-                    if(slideAnchor == null){
-                        slideAnchor = slideIndex;
-                    }
-
-                    lastScrolledSlide = slideAnchor;
-                    setUrlHash(sectionHash + '/' + slideAnchor);
-
-                //first slide won't have slide anchor, just the section one
-                }else if(slideIndex != null){
-                    lastScrolledSlide = slideAnchor;
-                    setUrlHash(anchorLink);
-                }
-
-                //section without slides
-                else{
-                    setUrlHash(anchorLink);
-                }
-            }
-
-            setBodyClass();
-        }
-
-        /**
-        * Sets the URL hash.
-        */
-        function setUrlHash(url){
-            if(options.recordHistory){
-                location.hash = url;
-            }else{
-                //Mobile Chrome doesn't work the normal way, so... lets use HTML5 for phones :)
-                if(isTouchDevice || isTouch){
-                    window.history.replaceState(undefined, undefined, '#' + url);
-                }else{
-                    var baseUrl = window.location.href.split('#')[0];
-                    window.location.replace( baseUrl + '#' + url );
-                }
-            }
-        }
-
-        /**
-        * Gets the anchor for the given slide / section. Its index will be used if there's none.
-        */
-        function getAnchor(element){
-            if(!element){
-                return null;
-            }
-            var anchor = element.getAttribute('data-anchor');
-            var elementIndex = index(element);
-
-            //Slide without anchor link? We take the index instead.
-            if(anchor == null){
-                anchor = elementIndex;
-            }
-
-            return anchor;
-        }
-
-        /**
-        * Sets a class for the body of the page depending on the active section / slide
-        */
-        function setBodyClass(){
-            var section = $(SECTION_ACTIVE_SEL)[0];
-            var slide = $(SLIDE_ACTIVE_SEL, section)[0];
-
-            var sectionAnchor = getAnchor(section);
-            var slideAnchor = getAnchor(slide);
-
-            var text = String(sectionAnchor);
-
-            if(slide){
-                text = text + '-' + slideAnchor;
-            }
-
-            //changing slash for dash to make it a valid CSS style
-            text = text.replace('/', '-').replace('#','');
-
-            //removing previous anchor classes
-            var classRe = new RegExp('\\b\\s?' + VIEWING_PREFIX + '-[^\\s]+\\b', "g");
-            $body.className = $body.className.replace(classRe, '');
-
-            //adding the current anchor
-            addClass($body, VIEWING_PREFIX + '-' + text);
-        }
-
-        /**
-        * Checks for translate3d support
-        * @return boolean
-        * http://stackoverflow.com/questions/5661671/detecting-transform-translate3d-support
-        */
-        function support3d() {
-            var el = document.createElement('p'),
-                has3d,
-                transforms = {
-                    'webkitTransform':'-webkit-transform',
-                    'OTransform':'-o-transform',
-                    'msTransform':'-ms-transform',
-                    'MozTransform':'-moz-transform',
-                    'transform':'transform'
-                };
-
-            //preventing the style p:empty{display: none;} from returning the wrong result
-            el.style.display = 'block'
-
-            // Add it to the body to get the computed style.
-            document.body.insertBefore(el, null);
-
-            for (var t in transforms) {
-                if (el.style[t] !== undefined) {
-                    el.style[t] = 'translate3d(1px,1px,1px)';
-                    has3d = window.getComputedStyle(el).getPropertyValue(transforms[t]);
-                }
-            }
-
-            document.body.removeChild(el);
-
-            return (has3d !== undefined && has3d.length > 0 && has3d !== 'none');
-        }
-
-        /**
-        * Removes the auto scrolling action fired by the mouse wheel and trackpad.
-        * After this function is called, the mousewheel and trackpad movements won't scroll through sections.
-        */
-        function removeMouseWheelHandler(){
-            if (document.addEventListener) {
-                document.removeEventListener('mousewheel', MouseWheelHandler, false); //IE9, Chrome, Safari, Oper
-                document.removeEventListener('wheel', MouseWheelHandler, false); //Firefox
-                document.removeEventListener('MozMousePixelScroll', MouseWheelHandler, false); //old Firefox
-            } else {
-                document.detachEvent('onmousewheel', MouseWheelHandler); //IE 6/7/8
-            }
-        }
-
-        /**
-        * Adds the auto scrolling action for the mouse wheel and trackpad.
-        * After this function is called, the mousewheel and trackpad movements will scroll through sections
-        * https://developer.mozilla.org/en-US/docs/Web/Events/wheel
-        */
-        function addMouseWheelHandler(){
-            var prefix = '';
-            var _addEventListener;
-
-            if (window.addEventListener){
-                _addEventListener = "addEventListener";
-            }else{
-                _addEventListener = "attachEvent";
-                prefix = 'on';
-            }
-
-             // detect available wheel event
-            var support = 'onwheel' in document.createElement('div') ? 'wheel' : // Modern browsers support "wheel"
-                      document.onmousewheel !== undefined ? 'mousewheel' : // Webkit and IE support at least "mousewheel"
-                      'DOMMouseScroll'; // let's assume that remaining browsers are older Firefox
-
-
-            if(support == 'DOMMouseScroll'){
-                document[ _addEventListener ](prefix + 'MozMousePixelScroll', MouseWheelHandler, false);
-            }
-
-            //handle MozMousePixelScroll in older Firefox
-            else{
-                document[ _addEventListener ](prefix + support, MouseWheelHandler, false);
-            }
-        }
-
-        /**
-        * Binding the mousemove when the mouse's middle button is pressed
-        */
-        function addMiddleWheelHandler(){
-            container.addEventListener('mousedown', mouseDownHandler);
-            container.addEventListener('mouseup', mouseUpHandler);
-        }
-
-        /**
-        * Unbinding the mousemove when the mouse's middle button is released
-        */
-        function removeMiddleWheelHandler(){
-            container.removeEventListener('mousedown', mouseDownHandler);
-            container.removeEventListener('mouseup', mouseUpHandler);
-        }
-
-        /**
-        * Adds the possibility to auto scroll through sections on touch devices.
-        */
-        function addTouchHandler(){
-            if(isTouchDevice || isTouch){
-                if(options.autoScrolling){
-                    $body.removeEventListener(events.touchmove, preventBouncing, {passive: false});
-                    $body.addEventListener(events.touchmove, preventBouncing, {passive: false});
-                }
-
-                var wrapper = $(WRAPPER_SEL)[0];
-                if(wrapper){
-                    wrapper.removeEventListener(events.touchstart, touchStartHandler);
-                    wrapper.removeEventListener(events.touchmove, touchMoveHandler, {passive: false});
-
-                    wrapper.addEventListener(events.touchstart, touchStartHandler);
-                    wrapper.addEventListener(events.touchmove, touchMoveHandler, {passive: false});
-                }
-            }
-        }
-
-        /**
-        * Removes the auto scrolling for touch devices.
-        */
-        function removeTouchHandler(){
-            if(isTouchDevice || isTouch){
-                // normalScrollElements requires it off #2691
-                if(options.autoScrolling){
-                    $body.removeEventListener(events.touchmove, touchMoveHandler, {passive: false});
-                    $body.removeEventListener(events.touchmove, preventBouncing, {passive: false});
-                }
-
-                var wrapper = $(WRAPPER_SEL)[0];
-                if(wrapper){
-                    wrapper.removeEventListener(events.touchstart, touchStartHandler);
-                    wrapper.removeEventListener(events.touchmove, touchMoveHandler, {passive: false});
-                }
-            }
-        }
-
-        /*
-        * Returns and object with Microsoft pointers (for IE<11 and for IE >= 11)
-        * http://msdn.microsoft.com/en-us/library/ie/dn304886(v=vs.85).aspx
-        */
-        function getMSPointer(){
-            var pointer;
-
-            //IE >= 11 & rest of browsers
-            if(window.PointerEvent){
-                pointer = { down: 'pointerdown', move: 'pointermove'};
-            }
-
-            //IE < 11
-            else{
-                pointer = { down: 'MSPointerDown', move: 'MSPointerMove'};
-            }
-
-            return pointer;
-        }
-
-        /**
-        * Gets the pageX and pageY properties depending on the browser.
-        * https://github.com/alvarotrigo/fullPage.js/issues/194#issuecomment-34069854
-        */
-        function getEventsPage(e){
-            var events = [];
-
-            events.y = (typeof e.pageY !== 'undefined' && (e.pageY || e.pageX) ? e.pageY : e.touches[0].pageY);
-            events.x = (typeof e.pageX !== 'undefined' && (e.pageY || e.pageX) ? e.pageX : e.touches[0].pageX);
-
-            //in touch devices with scrollBar:true, e.pageY is detected, but we have to deal with touch events. #1008
-            if(isTouch && isReallyTouch(e) && options.scrollBar && typeof e.touches !== 'undefined'){
-                events.y = e.touches[0].pageY;
-                events.x = e.touches[0].pageX;
-            }
-
-            return events;
-        }
-
-        /**
-        * Slides silently (with no animation) the active slider to the given slide.
-        * @param noCallback {bool} true or defined -> no callbacks
-        */
-        function silentLandscapeScroll(activeSlide, noCallbacks){
-            setScrollingSpeed(0, 'internal');
-
-            if(typeof noCallbacks !== 'undefined'){
-                //preventing firing callbacks afterSlideLoad etc.
-                isResizing = true;
-            }
-
-            landscapeScroll(closest(activeSlide, SLIDES_WRAPPER_SEL), activeSlide);
-
-            if(typeof noCallbacks !== 'undefined'){
-                isResizing = false;
-            }
-
-            setScrollingSpeed(originals.scrollingSpeed, 'internal');
-        }
-
-        /**
-        * Scrolls silently (with no animation) the page to the given Y position.
-        */
-        function silentScroll(top){
-            // The first section can have a negative value in iOS 10. Not quite sure why: -0.0142822265625
-            // that's why we round it to 0.
-            var roundedTop = Math.round(top);
-
-            if (options.css3 && options.autoScrolling && !options.scrollBar){
-                var translate3d = 'translate3d(0px, -' + roundedTop + 'px, 0px)';
-                transformContainer(translate3d, false);
-            }
-            else if(options.autoScrolling && !options.scrollBar){
-                css(container, {'top': -roundedTop + 'px'});
-                FP.test.top = -roundedTop + 'px';
-            }
-            else{
-                var scrollSettings = getScrollSettings(roundedTop);
-                setScrolling(scrollSettings.element, scrollSettings.options);
-            }
-        }
-
-        /**
-        * Returns the cross-browser transform string.
-        */
-        function getTransforms(translate3d){
-            return {
-                '-webkit-transform': translate3d,
-                '-moz-transform': translate3d,
-                '-ms-transform':translate3d,
-                'transform': translate3d
-            };
-        }
-
-        /**
-        * Allowing or disallowing the mouse/swipe scroll in a given direction. (not for keyboard)
-        * @type  m (mouse) or k (keyboard)
-        */
-        function setIsScrollAllowed(value, direction, type){
-            //up, down, left, right
-            if(direction !== 'all'){
-                isScrollAllowed[type][direction] = value;
-            }
-
-            //all directions?
-            else{
-                Object.keys(isScrollAllowed[type]).forEach(function(key){
-                    isScrollAllowed[type][key] = value;
-                });
-            }
-        }
-
-        /*
-        * Destroys fullpage.js plugin events and optinally its html markup and styles
-        */
-        function destroy(all){
-            setAutoScrolling(false, 'internal');
-            setAllowScrolling(true);
-            setMouseHijack(false);
-            setKeyboardScrolling(false);
-            addClass(container, DESTROYED);
-
-            clearTimeout(afterSlideLoadsId);
-            clearTimeout(afterSectionLoadsId);
-            clearTimeout(resizeId);
-            clearTimeout(scrollId);
-            clearTimeout(scrollId2);
-
-            window.removeEventListener('scroll', scrollHandler);
-            window.removeEventListener('hashchange', hashChangeHandler);
-            window.removeEventListener('resize', resizeHandler);
-
-            document.removeEventListener('keydown', keydownHandler);
-            document.removeEventListener('keyup', keyUpHandler);
-
-            ['click', 'touchstart'].forEach(function(eventName){
-                document.removeEventListener(eventName, delegatedEvents);
-            });
-
-            ['mouseenter', 'touchstart', 'mouseleave', 'touchend'].forEach(function(eventName){
-                document.removeEventListener(eventName, onMouseEnterOrLeave, true); //true is required!
-            });
-
-            clearTimeout(afterSlideLoadsId);
-            clearTimeout(afterSectionLoadsId);
-
-            //lets make a mess!
-            if(all){
-                destroyStructure();
-            }
-        }
-
-        /*
-        * Removes inline styles added by fullpage.js
-        */
-        function destroyStructure(){
-            //reseting the `top` or `translate` properties to 0
-            silentScroll(0);
-
-            //loading all the lazy load content
-            $('img[data-src], source[data-src], audio[data-src], iframe[data-src]', container).forEach(function(item){
-                setSrc(item, 'src');
-            });
-
-            $('img[data-srcset]').forEach(function(item){
-                setSrc(item, 'srcset');
-            });
-
-            remove($(SECTION_NAV_SEL + ', ' + SLIDES_NAV_SEL +  ', ' + SLIDES_ARROW_SEL));
-
-            //removing inline styles
-            css($(SECTION_SEL), {
-                'height': '',
-                'background-color' : '',
-                'padding': ''
-            });
-
-            css($(SLIDE_SEL), {
-                'width': ''
-            });
-
-            css(container, {
-                'height': '',
-                'position': '',
-                '-ms-touch-action': '',
-                'touch-action': ''
-            });
-
-            css($htmlBody, {
-                'overflow': '',
-                'height': ''
-            });
-
-            // remove .fp-enabled class
-            removeClass($('html'), ENABLED);
-
-            // remove .fp-responsive class
-            removeClass($body, RESPONSIVE);
-
-            // remove all of the .fp-viewing- classes
-            $body.className.split(/\s+/).forEach(function (className) {
-                if (className.indexOf(VIEWING_PREFIX) === 0) {
-                    removeClass($body, className);
-                }
-            });
-
-            //removing added classes
-            $(SECTION_SEL + ', ' + SLIDE_SEL).forEach(function(item){
-                if(options.scrollOverflowHandler && options.scrollOverflow){
-                    options.scrollOverflowHandler.remove(item);
-                }
-                removeClass(item, TABLE + ' ' + ACTIVE + ' ' + COMPLETELY);
-                var previousStyles = item.getAttribute('data-fp-styles');
-                if(previousStyles){
-                    item.setAttribute('style', item.getAttribute('data-fp-styles'));
-                }
-
-                //removing anchors if they were not set using the HTML markup
-                if(hasClass(item, SECTION) && !g_initialAnchorsInDom){
-                    item.removeAttribute('data-anchor');
-                }
-            });
-
-            //removing the applied transition from the fullpage wrapper
-            removeAnimation(container);
-
-            //Unwrapping content
-            [TABLE_CELL_SEL, SLIDES_CONTAINER_SEL,SLIDES_WRAPPER_SEL].forEach(function(selector){
-                $(selector, container).forEach(function(item){
-                    //unwrap not being use in case there's no child element inside and its just text
-                    unwrap(item);
-                });
-            });
-
-            //removing the applied transition from the fullpage wrapper
-            css(container, {
-                '-webkit-transition': 'none',
-                'transition': 'none'
-            });
-
-            //scrolling the page to the top with no animation
-            window.scrollTo(0, 0);
-
-            //removing selectors
-            var usedSelectors = [SECTION, SLIDE, SLIDES_CONTAINER];
-            usedSelectors.forEach(function(item){
-                removeClass($('.' + item), item);
-            });
-        }
-
-        /*
-        * Sets the state for a variable with multiple states (original, and temporal)
-        * Some variables such as `autoScrolling` or `recordHistory` might change automatically its state when using `responsive` or `autoScrolling:false`.
-        * This function is used to keep track of both states, the original and the temporal one.
-        * If type is not 'internal', then we assume the user is globally changing the variable.
-        */
-        function setVariableState(variable, value, type){
-            options[variable] = value;
-            if(type !== 'internal'){
-                originals[variable] = value;
-            }
-        }
-
-        /**
-        * Displays warnings
-        */
-        function displayWarnings(){
-            if(!isOK){
-                showError('error', 'Fullpage.js version 3 has changed its license to GPLv3 and it requires a `licenseKey` option. Read about it here:');
-                showError('error', 'https://github.com/alvarotrigo/fullPage.js#options.');
-            }
-
-            var extensions = ['fadingEffect', 'continuousHorizontal', 'scrollHorizontally', 'interlockedSlides', 'resetSliders', 'responsiveSlides', 'offsetSections', 'dragAndMove', 'scrollOverflowReset', 'parallax'];
-            if(hasClass($('html'), ENABLED)){
-                showError('error', 'Fullpage.js can only be initialized once and you are doing it multiple times!');
-                return;
-            }
-
-            // Disable mutually exclusive settings
-            if (options.continuousVertical &&
-                (options.loopTop || options.loopBottom)) {
-                options.continuousVertical = false;
-                showError('warn', 'Option `loopTop/loopBottom` is mutually exclusive with `continuousVertical`; `continuousVertical` disabled');
-            }
-
-            if(options.scrollOverflow &&
-               (options.scrollBar || !options.autoScrolling)){
-                showError('warn', 'Options scrollBar:true and autoScrolling:false are mutually exclusive with scrollOverflow:true. Sections with scrollOverflow might not work well in Firefox');
-            }
-
-            if(options.continuousVertical && (options.scrollBar || !options.autoScrolling)){
-                options.continuousVertical = false;
-                showError('warn', 'Scroll bars (`scrollBar:true` or `autoScrolling:false`) are mutually exclusive with `continuousVertical`; `continuousVertical` disabled');
-            }
-
-            if(options.scrollOverflow && options.scrollOverflowHandler == null){
-                options.scrollOverflow = false;
-                showError('error', 'The option `scrollOverflow:true` requires the file `scrolloverflow.min.js`. Please include it before fullPage.js.');
-            }
-
-            //using extensions? Wrong file!
-            extensions.forEach(function(extension){
-                //is the option set to true?
-                if(options[extension]){
-                    showError('warn', 'fullpage.js extensions require fullpage.extensions.min.js file instead of the usual fullpage.js. Requested: '+ extension);
-                }
-            });
-
-            //anchors can not have the same value as any element ID or NAME
-            options.anchors.forEach(function(name){
-
-                //case insensitive selectors (http://stackoverflow.com/a/19465187/1081396)
-                var nameAttr = [].slice.call($('[name]')).filter(function(item) {
-                    return item.getAttribute('name') && item.getAttribute('name').toLowerCase() == name.toLowerCase();
-                });
-
-                var idAttr = [].slice.call($('[id]')).filter(function(item) {
-                    return item.getAttribute('id') && item.getAttribute('id').toLowerCase() == name.toLowerCase();
-                });
-
-                if(idAttr.length || nameAttr.length ){
-                    showError('error', 'data-anchor tags can not have the same value as any `id` element on the site (or `name` element for IE).');
-                    if(idAttr.length){
-                        showError('error', '"' + name + '" is is being used by another element `id` property');
-                    }
-                    if(nameAttr.length){
-                        showError('error', '"' + name + '" is is being used by another element `name` property');
-                    }
-                }
-            });
-        }
-
-        /**
-        * Getting the position of the element to scroll when using jQuery animations
-        */
-        function getScrolledPosition(element){
-            var position;
-
-            //is not the window element and is a slide?
-            if(element.self != window && hasClass(element, SLIDES_WRAPPER)){
-                position = element.scrollLeft;
-            }
-            else if(!options.autoScrolling  || options.scrollBar){
-                position = getScrollTop();
-            }
-            else{
-                position = element.offsetTop;
-            }
-
-            //gets the top property of the wrapper
-            return position;
-        }
-
-        /**
-        * Simulates the animated scrollTop of jQuery. Used when css3:false or scrollBar:true or autoScrolling:false
-        * http://stackoverflow.com/a/16136789/1081396
-        */
-        function scrollTo(element, to, duration, callback) {
-            var start = getScrolledPosition(element);
-            var change = to - start;
-            var currentTime = 0;
-            var increment = 20;
-            activeAnimation = true;
-
-            var animateScroll = function(){
-                if(activeAnimation){ //in order to stope it from other function whenever we want
-                    var val = to;
-
-                    currentTime += increment;
-
-                    if(duration){
-                        val = window.fp_easings[options.easing](currentTime, start, change, duration);
-                    }
-
-                    setScrolling(element, val);
-
-                    if(currentTime < duration) {
-                        setTimeout(animateScroll, increment);
-                    }else if(typeof callback !== 'undefined'){
-                        callback();
-                    }
-                }else if (currentTime < duration){
-                    callback();
-                }
-            };
-
-            animateScroll();
-        }
-
-        /**
-        * Scrolls the page / slider the given number of pixels.
-        * It will do it one or another way dependiong on the library's config.
-        */
-        function setScrolling(element, val){
-            if(!options.autoScrolling || options.scrollBar || (element.self != window && hasClass(element, SLIDES_WRAPPER))){
-
-                //scrolling horizontally through the slides?
-                if(element.self != window  && hasClass(element, SLIDES_WRAPPER)){
-                    element.scrollLeft = val;
-                }
-                //vertical scroll
-                else{
-                    element.scrollTo(0, val);
-                }
-            }else{
-                 element.style.top = val + 'px';
-            }
-        }
-
-        /**
-        * Gets the active slide.
-        */
-        function getActiveSlide(){
-            var activeSlide = $(SLIDE_ACTIVE_SEL, $(SECTION_ACTIVE_SEL)[0])[0];
-            return nullOrSlide(activeSlide);
-        }
-
-        /**
-        * Gets the active section.
-        */
-        function getActiveSection(){
-            return new Section($(SECTION_ACTIVE_SEL)[0]);
-        }
-
-        /**
-        * Item. Slide or Section objects share the same properties.
-        */
-        function Item(el, selector){
-            this.anchor = el.getAttribute('data-anchor');
-            this.item = el;
-            this.index = index(el, selector);
-            this.isLast = this.index === el.parentElement.querySelectorAll(selector).length -1;
-            this.isFirst = !this.index;
-        }
-
-        /**
-        * Section object
-        */
-        function Section(el){
-            Item.call(this, el, SECTION_SEL);
-        }
-
-        /**
-        * Slide object
-        */
-        function Slide(el){
-            Item.call(this, el, SLIDE_SEL);
-        }
-
-        return FP;
-    } //end of $.fn.fullpage
-
-
-    //utils
-    /**
-    * Shows a message in the console of the given type.
-    */
-    function showError(type, text){
-        window.console && window.console[type] && window.console[type]('fullPage: ' + text);
-    }
-
-    /**
-    * Equivalent or jQuery function $().
-    */
-    function $(selector, context){
-        context = arguments.length > 1 ? context : document;
-        return context ? context.querySelectorAll(selector) : null;
-    }
-
-    /**
-    * Extends a given Object properties and its childs.
-    */
-    function deepExtend(out) {
-        out = out || {};
-        for (var i = 1, len = arguments.length; i < len; ++i){
-            var obj = arguments[i];
-
-            if(!obj){
-              continue;
-            }
-
-            for(var key in obj){
-              if (!obj.hasOwnProperty(key)){
-                continue;
-              }
-
-              // based on https://javascriptweblog.wordpress.com/2011/08/08/fixing-the-javascript-typeof-operator/
-              if (Object.prototype.toString.call(obj[key]) === '[object Object]'){
-                out[key] = deepExtend(out[key], obj[key]);
-                continue;
-              }
-
-              out[key] = obj[key];
-            }
-        }
-        return out;
-    }
-
-    /**
-    * Checks if the passed element contains the passed class.
-    */
-    function hasClass(el, className){
-        if(el == null){
-            return false;
-        }
-        if (el.classList){
-            return el.classList.contains(className);
-        }
-        return new RegExp('(^| )' + className + '( |$)', 'gi').test(el.className);
-    }
-
-    /**
-    * Gets the window height. Crossbrowser.
-    */
-    function getWindowHeight(){
-        return  'innerHeight' in window ? window.innerHeight : document.documentElement.offsetHeight;
-    }
-
-    /**
-    * Set's the CSS properties for the passed item/s.
-    * @param {NodeList|HTMLElement} items
-    * @param {Object} props css properties and values.
-    */
-    function css(items, props) {
-        items = getList(items);
-
-        var key;
-        for (key in props) {
-            if (props.hasOwnProperty(key)) {
-                if (key !== null) {
-                    for (var i = 0; i < items.length; i++) {
-                        var item = items[i];
-                        item.style[key] = props[key];
-                    }
-                }
-            }
-        }
-
-        return items;
-    }
-
-    /**
-    * Generic function to get the previous or next element.
-    */
-    function until(item, selector, fn){
-        var sibling = item[fn];
-        while(sibling && !matches(sibling, selector)){
-            sibling = sibling[fn];
-        }
-
-        return sibling;
-    }
-
-    /**
-    * Gets the previous element to the passed element that matches the passed selector.
-    */
-    function prevUntil(item, selector){
-        return until(item, selector, 'previousElementSibling');
-    }
-
-    /**
-    * Gets the next element to the passed element that matches the passed selector.
-    */
-    function nextUntil(item, selector){
-        return until(item, selector, 'nextElementSibling');
-    }
-
-    /**
-    * Gets the previous element to the passed element.
-    */
-    function prev(item){
-        return item.previousElementSibling;
-    }
-
-    /**
-    * Gets the next element to the passed element.
-    */
-    function next(item){
-        return item.nextElementSibling;
-    }
-
-    /**
-    * Gets the last element from the passed list of elements.
-    */
-    function last(item){
-        return item[item.length-1];
-    }
-
-    /**
-    * Gets index from the passed element.
-    * @param {String} selector is optional.
-    */
-    function index(item, selector) {
-        item = isArrayOrList(item) ? item[0] : item;
-        var children = selector != null? $(selector, item.parentNode) : item.parentNode.childNodes;
-        var num = 0;
-        for (var i=0; i<children.length; i++) {
-             if (children[i] == item) return num;
-             if (children[i].nodeType==1) num++;
-        }
-        return -1;
-    }
-
-    /**
-    * Gets an iterable element for the passed element/s
-    */
-    function getList(item){
-        return !isArrayOrList(item) ? [item] : item;
-    }
-
-    /**
-    * Adds the display=none property for the passed element/s
-    */
-    function hide(el){
-        el = getList(el);
-
-        for(var i = 0; i<el.length; i++){
-            el[i].style.display = 'none';
-        }
-        return el;
-    }
-
-    /**
-    * Adds the display=block property for the passed element/s
-    */
-    function show(el){
-        el = getList(el);
-
-        for(var i = 0; i<el.length; i++){
-            el[i].style.display = 'block';
-        }
-        return el;
-    }
-
-    /**
-    * Checks if the passed element is an iterable element or not
-    */
-    function isArrayOrList(el){
-        return Object.prototype.toString.call( el ) === '[object Array]' ||
-            Object.prototype.toString.call( el ) === '[object NodeList]';
-    }
-
-    /**
-    * Adds the passed class to the passed element/s
-    */
-    function addClass(el, className) {
-        el = getList(el);
-
-        for(var i = 0; i<el.length; i++){
-            var item = el[i];
-            if (item.classList){
-                item.classList.add(className);
-            }
-            else{
-              item.className += ' ' + className;
-            }
-        }
-        return el;
-    }
-
-    /**
-    * Removes the passed class to the passed element/s
-    * @param {String} `className` can be multiple classnames separated by whitespace
-    */
-    function removeClass(el, className){
-        el = getList(el);
-
-        var classNames = className.split(' ');
-
-        for(var a = 0; a<classNames.length; a++){
-            className = classNames[a];
-            for(var i = 0; i<el.length; i++){
-                var item = el[i];
-                if (item.classList){
-                    item.classList.remove(className);
-                }
-                else{
-                    item.className = item.className.replace(new RegExp('(^|\\b)' + className.split(' ').join('|') + '(\\b|$)', 'gi'), ' ');
-                }
-            }
-        }
-        return el;
-    }
-
-    /**
-    * Appends the given element ot the given parent.
-    */
-    function appendTo(el, parent){
-        parent.appendChild(el);
-    }
-
-    /**
-    Usage:
-
-    var wrapper = document.createElement('div');
-    wrapper.className = 'fp-slides';
-    wrap($('.slide'), wrapper);
-
-    https://jsfiddle.net/qwzc7oy3/15/ (vanilla)
-    https://jsfiddle.net/oya6ndka/1/ (jquery equivalent)
-    */
-    function wrap(toWrap, wrapper, isWrapAll) {
-        var newParent;
-        wrapper = wrapper || document.createElement('div');
-        for(var i = 0; i < toWrap.length; i++){
-            var item = toWrap[i];
-            if(isWrapAll && !i || !isWrapAll){
-                newParent = wrapper.cloneNode(true);
-                item.parentNode.insertBefore(newParent, item);
-            }
-            newParent.appendChild(item);
-        }
-        return toWrap;
-    }
-
-    /**
-    Usage:
-    var wrapper = document.createElement('div');
-    wrapper.className = 'fp-slides';
-    wrap($('.slide'), wrapper);
-
-    https://jsfiddle.net/qwzc7oy3/27/ (vanilla)
-    https://jsfiddle.net/oya6ndka/4/ (jquery equivalent)
-    */
-    function wrapAll(toWrap, wrapper) {
-        wrap(toWrap, wrapper, true);
-    }
-
-    /**
-    * Usage:
-    * wrapInner(document.querySelector('#pepe'), '<div class="test">afdas</div>');
-    * wrapInner(document.querySelector('#pepe'), element);
-    *
-    * https://jsfiddle.net/zexxz0tw/6/
-    *
-    * https://stackoverflow.com/a/21817590/1081396
-    */
-    function wrapInner(parent, wrapper) {
-        if (typeof wrapper === "string"){
-            wrapper = createElementFromHTML(wrapper);
-        }
-
-        parent.appendChild(wrapper);
-
-        while(parent.firstChild !== wrapper){
-            wrapper.appendChild(parent.firstChild);
-       }
-    }
-
-    /**
-    * Usage:
-    * unwrap(document.querySelector('#pepe'));
-    * unwrap(element);
-    *
-    * https://jsfiddle.net/szjt0hxq/1/
-    *
-    */
-    function unwrap(wrapper) {
-        var wrapperContent = document.createDocumentFragment();
-        while (wrapper.firstChild) {
-            wrapperContent.appendChild(wrapper.firstChild);
-        }
-
-        wrapper.parentNode.replaceChild(wrapperContent, wrapper);
-    }
-
-    /**
-    * http://stackoverflow.com/questions/22100853/dom-pure-javascript-solution-to-jquery-closest-implementation
-    * Returns the element or `false` if there's none
-    */
-    function closest(el, selector) {
-        if(el && el.nodeType === 1){
-            if(matches(el, selector)){
-                return el;
-            }
-            return closest(el.parentNode, selector);
-        }
-        return null;
-    }
-
-    /**
-    * Places one element (rel) after another one or group of them (reference).
-    * @param {HTMLElement} reference
-    * @param {HTMLElement|NodeList|String} el
-    * https://jsfiddle.net/9s97hhzv/1/
-    */
-    function after(reference, el) {
-        insertBefore(reference, reference.nextSibling, el);
-    }
-
-    /**
-    * Places one element (rel) before another one or group of them (reference).
-    * @param {HTMLElement} reference
-    * @param {HTMLElement|NodeList|String} el
-    * https://jsfiddle.net/9s97hhzv/1/
-    */
-    function before(reference, el) {
-        insertBefore(reference, reference, el);
-    }
-
-    /**
-    * Based in https://stackoverflow.com/a/19316024/1081396
-    * and https://stackoverflow.com/a/4793630/1081396
-    */
-    function insertBefore(reference, beforeElement, el){
-        if(!isArrayOrList(el)){
-            if(typeof el == 'string'){
-                el = createElementFromHTML(el);
-            }
-            el = [el];
-        }
-
-        for(var i = 0; i<el.length; i++){
-            reference.parentNode.insertBefore(el[i], beforeElement);
-        }
-    }
-
-    //http://stackoverflow.com/questions/3464876/javascript-get-window-x-y-position-for-scroll
-    function getScrollTop(){
-        var doc = document.documentElement;
-        return (window.pageYOffset || doc.scrollTop)  - (doc.clientTop || 0);
-    }
-
-    /**
-    * Gets the siblings of the passed element
-    */
-    function siblings(el){
-        return Array.prototype.filter.call(el.parentNode.children, function(child){
-          return child !== el;
-        });
-    }
-
-    //for IE 9 ?
-    function preventDefault(event){
-        if(event.preventDefault){
-            event.preventDefault();
-        }
-        else{
-            event.returnValue = false;
-        }
-    }
-
-    /**
-    * Determines whether the passed item is of function type.
-    */
-    function isFunction(item) {
-      if (typeof item === 'function') {
-        return true;
-      }
-      var type = Object.prototype.toString(item);
-      return type === '[object Function]' || type === '[object GeneratorFunction]';
-    }
-
-    /**
-    * Trigger custom events
-    */
-    function trigger(el, eventName, data){
-        var event;
-        data = typeof data === 'undefined' ? {} : data;
-
-        // Native
-        if(typeof window.CustomEvent === "function" ){
-            event = new CustomEvent(eventName, {detail: data});
-        }
-        else{
-            event = document.createEvent('CustomEvent');
-            event.initCustomEvent(eventName, true, true, data);
-        }
-
-        el.dispatchEvent(event);
-    }
-
-    /**
-    * Polyfill of .matches()
-    */
-    function matches(el, selector) {
-        return (el.matches || el.matchesSelector || el.msMatchesSelector || el.mozMatchesSelector || el.webkitMatchesSelector || el.oMatchesSelector).call(el, selector);
-    }
-
-    /**
-    * Toggles the visibility of the passed element el.
-    */
-    function toggle(el, value){
-        if(typeof value === "boolean"){
-            for(var i = 0; i<el.length; i++){
-                el[i].style.display = value ? 'block' : 'none';
-            }
-        }
-        //we don't use it in other way, so no else :)
-
-        return el;
-    }
-
-    /**
-    * Creates a HTMLElement from the passed HTML string.
-    * https://stackoverflow.com/a/494348/1081396
-    */
-    function createElementFromHTML(htmlString) {
-        var div = document.createElement('div');
-        div.innerHTML = htmlString.trim();
-
-        // Change this to div.childNodes to support multiple top-level nodes
-        return div.firstChild;
-    }
-
-    /**
-    * Removes the passed item/s from the DOM.
-    */
-    function remove(items){
-        items = getList(items);
-        for(var i = 0; i<items.length; i++){
-            var item = items[i];
-            if(item && item.parentElement) {
-                item.parentNode.removeChild(item);
-            }
-        }
-    }
-
-    /**
-    * Filters an array by the passed filter funtion.
-    */
-    function filter(el, filterFn){
-        Array.prototype.filter.call(el, filterFn);
-    }
-
-    //https://jsfiddle.net/w1rktecz/
-    function untilAll(item, selector, fn){
-        var sibling = item[fn];
-        var siblings = [];
-        while(sibling){
-            if(matches(sibling, selector) || selector == null) {
-                siblings.push(sibling);
-            }
-            sibling = sibling[fn];
-        }
-
-        return siblings;
-    }
-
-    /**
-    * Gets all next elements matching the passed selector.
-    */
-    function nextAll(item, selector){
-        return untilAll(item, selector, 'nextElementSibling');
-    }
-
-    /**
-    * Gets all previous elements matching the passed selector.
-    */
-    function prevAll(item, selector){
-        return untilAll(item, selector, 'previousElementSibling');
-    }
-
-    /**
-    * Converts an object to an array.
-    */
-    function toArray(objectData){
-        return Object.keys(objectData).map(function(key) {
-           return objectData[key];
-        });
-    }
-
-    /**
-    * forEach polyfill for IE
-    * https://developer.mozilla.org/en-US/docs/Web/API/NodeList/forEach#Browser_Compatibility
-    */
-    if (window.NodeList && !NodeList.prototype.forEach) {
-        NodeList.prototype.forEach = function (callback, thisArg) {
-            thisArg = thisArg || window;
-            for (var i = 0; i < this.length; i++) {
-                callback.call(thisArg, this[i], i, this);
-            }
-        };
-    }
-
-    //utils are public, so we can use it wherever we want
-    window.fp_utils = {
-        $: $,
-        deepExtend: deepExtend,
-        hasClass: hasClass,
-        getWindowHeight: getWindowHeight,
-        css: css,
-        until: until,
-        prevUntil: prevUntil,
-        nextUntil: nextUntil,
-        prev: prev,
-        next: next,
-        last: last,
-        index: index,
-        getList: getList,
-        hide: hide,
-        show: show,
-        isArrayOrList: isArrayOrList,
-        addClass: addClass,
-        removeClass: removeClass,
-        appendTo: appendTo,
-        wrap: wrap,
-        wrapAll: wrapAll,
-        wrapInner: wrapInner,
-        unwrap: unwrap,
-        closest: closest,
-        after: after,
-        before: before,
-        insertBefore: insertBefore,
-        getScrollTop: getScrollTop,
-        siblings: siblings,
-        preventDefault: preventDefault,
-        isFunction: isFunction,
-        trigger: trigger,
-        matches: matches,
-        toggle: toggle,
-        createElementFromHTML: createElementFromHTML,
-        remove: remove,
-        filter: filter,
-        untilAll: untilAll,
-        nextAll: nextAll,
-        prevAll: prevAll,
-        showError: showError
-    };
-
-    return initialise;
-}));
-
-/**
- * jQuery adapter for fullPage.js 3.0.0
- */
-if(window.jQuery && window.fullpage){
-    (function ($, fullpage) {
-        'use strict';
-
-        // No jQuery No Go
-        if (!$ || !fullpage) {
-            window.fp_utils.showError('error', 'jQuery is required to use the jQuery fullpage adapter!');
-            return;
-        }
-
-        $.fn.fullpage = function(options) {
-            var FP = new fullpage(this[0], options);
-
-            //Static API
-            Object.keys(FP).forEach(function (key) {
-                $.fn.fullpage[key] = FP[key];
-            });
-        };
-    })(window.jQuery, window.fullpage);
-}
-;
+!function(e,t,n,o,r){"function"==typeof define&&define.amd?define(function(){return e.fullpage=o(t,n),e.fullpage}):"object"==typeof exports?module.exports=o(t,n):t.fullpage=o(t,n)}(this,window,document,function(Vt,Zt){"use strict";var Gt="fullpage-wrapper",Ft="."+Gt,Ut="fp-responsive",_t="fp-notransition",Qt="fp-destroyed",Jt="fp-enabled",Kt="fp-viewing",qt="active",$t="."+qt,en="fp-completely",tn="fp-section",nn="."+tn,on=nn+$t,rn="fp-tableCell",ln="."+rn,an="fp-auto-height",sn="fp-normal-scroll",cn="fp-nav",un="#"+cn,fn="fp-tooltip",dn="fp-slide",vn="."+dn,pn=vn+$t,hn="fp-slides",gn="."+hn,mn="fp-slidesContainer",Sn="."+mn,bn="fp-table",wn="fp-slidesNav",yn="."+wn,En=yn+" a",e="fp-controlArrow",xn="."+e,An="fp-prev",Ln=xn+".fp-prev",Mn=xn+".fp-next";function Tn(e,t){Vt.console&&Vt.console[e]&&Vt.console[e]("fullPage: "+t)}function On(e,t){return(t=1<arguments.length?t:Zt)?t.querySelectorAll(e):null}function kn(e){e=e||{};for(var t=1,n=arguments.length;t<n;++t){var o=arguments[t];if(o)for(var r in o)o.hasOwnProperty(r)&&("[object Object]"!==Object.prototype.toString.call(o[r])?e[r]=o[r]:e[r]=kn(e[r],o[r]))}return e}function Cn(e,t){return null!=e&&(e.classList?e.classList.contains(t):new RegExp("(^| )"+t+"( |$)","gi").test(e.className))}function Hn(){return"innerHeight"in Vt?Vt.innerHeight:Zt.documentElement.offsetHeight}function Rn(e,t){var n;for(n in e=l(e),t)if(t.hasOwnProperty(n)&&null!==n)for(var o=0;o<e.length;o++){e[o].style[n]=t[n]}return e}function n(e,t,n){for(var o=e[n];o&&!to(o,t);)o=o[n];return o}function In(e,t){return n(e,t,"previousElementSibling")}function zn(e,t){return n(e,t,"nextElementSibling")}function Bn(e,t){if(null==t)return e.previousElementSibling;var n=Bn(e);return n&&to(n,t)?n:null}function Nn(e,t){if(null==t)return e.nextElementSibling;var n=Nn(e);return n&&to(n,t)?n:null}function jn(e){return e[e.length-1]}function Pn(e,t){e=i(e)?e[0]:e;for(var n=null!=t?On(t,e.parentNode):e.parentNode.childNodes,o=0,r=0;r<n.length;r++){if(n[r]==e)return o;1==n[r].nodeType&&o++}return-1}function l(e){return i(e)?e:[e]}function Yn(e){e=l(e);for(var t=0;t<e.length;t++)e[t].style.display="none";return e}function Dn(e){e=l(e);for(var t=0;t<e.length;t++)e[t].style.display="block";return e}function i(e){return"[object Array]"===Object.prototype.toString.call(e)||"[object NodeList]"===Object.prototype.toString.call(e)}function Wn(e,t){e=l(e);for(var n=0;n<e.length;n++){var o=e[n];o.classList?o.classList.add(t):o.className+=" "+t}return e}function Xn(e,t){e=l(e);for(var n=t.split(" "),o=0;o<n.length;o++){t=n[o];for(var r=0;r<e.length;r++){var i=e[r];i.classList?i.classList.remove(t):i.className=i.className.replace(new RegExp("(^|\\b)"+t.split(" ").join("|")+"(\\b|$)","gi")," ")}}return e}function Vn(e,t){t.appendChild(e)}function o(e,t,n){var o;t=t||Zt.createElement("div");for(var r=0;r<e.length;r++){var i=e[r];(n&&!r||!n)&&(o=t.cloneNode(!0),i.parentNode.insertBefore(o,i)),o.appendChild(i)}return e}function Zn(e,t){o(e,t,!0)}function Gn(e,t){for("string"==typeof t&&(t=oo(t)),e.appendChild(t);e.firstChild!==t;)t.appendChild(e.firstChild)}function Fn(e){for(var t=Zt.createDocumentFragment();e.firstChild;)t.appendChild(e.firstChild);e.parentNode.replaceChild(t,e)}function Un(e,t){return e&&1===e.nodeType?to(e,t)?e:Un(e.parentNode,t):null}function _n(e,t){r(e,e.nextSibling,t)}function Qn(e,t){r(e,e,t)}function r(e,t,n){i(n)||("string"==typeof n&&(n=oo(n)),n=[n]);for(var o=0;o<n.length;o++)e.parentNode.insertBefore(n[o],t)}function Jn(){var e=Zt.documentElement;return(Vt.pageYOffset||e.scrollTop)-(e.clientTop||0)}function Kn(t){return Array.prototype.filter.call(t.parentNode.children,function(e){return e!==t})}function qn(e){e.preventDefault?e.preventDefault():e.returnValue=!1}function $n(e){if("function"==typeof e)return!0;var t=Object.prototype.toString(e);return"[object Function]"===t||"[object GeneratorFunction]"===t}function eo(e,t,n){var o;n=void 0===n?{}:n,"function"==typeof Vt.CustomEvent?o=new CustomEvent(t,{detail:n}):(o=Zt.createEvent("CustomEvent")).initCustomEvent(t,!0,!0,n),e.dispatchEvent(o)}function to(e,t){return(e.matches||e.matchesSelector||e.msMatchesSelector||e.mozMatchesSelector||e.webkitMatchesSelector||e.oMatchesSelector).call(e,t)}function no(e,t){if("boolean"==typeof t)for(var n=0;n<e.length;n++)e[n].style.display=t?"block":"none";return e}function oo(e){var t=Zt.createElement("div");return t.innerHTML=e.trim(),t.firstChild}function ro(e){e=l(e);for(var t=0;t<e.length;t++){var n=e[t];n&&n.parentElement&&n.parentNode.removeChild(n)}}function a(e,t,n){for(var o=e[n],r=[];o;)(to(o,t)||null==t)&&r.push(o),o=o[n];return r}function io(e,t){return a(e,t,"nextElementSibling")}function lo(e,t){return a(e,t,"previousElementSibling")}function ao(e,t){e.insertBefore(t,e.firstChild)}return Vt.NodeList&&!NodeList.prototype.forEach&&(NodeList.prototype.forEach=function(e,t){t=t||Vt;for(var n=0;n<this.length;n++)e.call(t,this[n],n,this)}),Vt.fp_utils={$:On,deepExtend:kn,hasClass:Cn,getWindowHeight:Hn,css:Rn,until:n,prevUntil:In,nextUntil:zn,prev:Bn,next:Nn,last:jn,index:Pn,getList:l,hide:Yn,show:Dn,isArrayOrList:i,addClass:Wn,removeClass:Xn,appendTo:Vn,wrap:o,wrapAll:Zn,wrapInner:Gn,unwrap:Fn,closest:Un,after:_n,before:Qn,insertBefore:r,getScrollTop:Jn,siblings:Kn,preventDefault:qn,isFunction:$n,trigger:eo,matches:to,toggle:no,createElementFromHTML:oo,remove:ro,filter:function(e,t){Array.prototype.filter.call(e,t)},untilAll:a,nextAll:io,prevAll:lo,showError:Tn,prependTo:ao,toggleClass:function(e,t,n){if(e.classList&&null==n)e.classList.toggle(t);else{var o=Cn(e,t);o&&null==n||!n?Xn(e,t):(!o&&null==n||n)&&Wn(e,t)}}},function(e,g){var t=g&&new RegExp("([\\d\\w]{8}-){3}[\\d\\w]{8}|^(?=.*?[A-Y])(?=.*?[a-y])(?=.*?[0-8])(?=.*?[#?!@$%^&*-]).{8,}$").test(g.licenseKey)||-1<Zt.domain.indexOf("alvarotrigo.com");if(!Cn(On("html"),Jt)){var r=On("html, body"),m=On("body")[0],S={};g=kn({menu:!1,anchors:[],lockAnchors:!1,navigation:!1,navigationPosition:"right",navigationTooltips:[],showActiveTooltip:!1,slidesNavigation:!1,slidesNavPosition:"bottom",scrollBar:!1,hybrid:!1,css3:!0,scrollingSpeed:700,autoScrolling:!0,fitToSection:!0,fitToSectionDelay:1e3,easing:"easeInOutCubic",easingcss3:"ease",loopBottom:!1,loopTop:!1,loopHorizontal:!0,continuousVertical:!1,continuousHorizontal:!1,scrollHorizontally:!1,interlockedSlides:!1,dragAndMove:!1,offsetSections:!1,resetSliders:!1,fadingEffect:!1,normalScrollElements:null,scrollOverflow:!1,scrollOverflowReset:!1,scrollOverflowHandler:Vt.fp_scrolloverflow?Vt.fp_scrolloverflow.iscrollHandler:null,scrollOverflowOptions:null,touchSensitivity:5,normalScrollElementTouchThreshold:5,bigSectionsDestination:null,keyboardScrolling:!0,animateAnchor:!0,recordHistory:!0,controlArrows:!0,controlArrowColor:"#fff",verticalCentered:!0,sectionsColor:[],paddingTop:0,paddingBottom:0,fixedElements:null,responsive:0,responsiveWidth:0,responsiveHeight:0,responsiveSlides:!1,parallax:!1,parallaxOptions:{type:"reveal",percentage:62,property:"translate"},sectionSelector:".section",slideSelector:".slide",v2compatible:!1,afterLoad:null,onLeave:null,afterRender:null,afterResize:null,afterReBuild:null,afterSlideLoad:null,onSlideLeave:null,afterResponsive:null,lazyLoading:!0},g);var b,i,c,u,a=!1,n=navigator.userAgent.match(/(iPhone|iPod|iPad|Android|playbook|silk|BlackBerry|BB10|Windows Phone|Tizen|Bada|webOS|IEMobile|Opera Mini)/),o="ontouchstart"in Vt||0<navigator.msMaxTouchPoints||navigator.maxTouchPoints,w="string"==typeof e?On(e)[0]:e,y=Hn(),E=!1,l=!0,x=!0,f=[],d={m:{up:!0,down:!0,left:!0,right:!0}};d.k=kn({},d.m);var v,s,p,h,A,L,M,T,O,k=Lt(),C={touchmove:"ontouchmove"in Vt?"touchmove":k.move,touchstart:"ontouchstart"in Vt?"touchstart":k.down},H=!1,R='a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [tabindex="0"], [contenteditable]',I=kn({},g),z=!1,B={};jt(),Vt.fp_easings=kn(Vt.fp_easings,{easeInOutCubic:function(e,t,n,o){return(e/=o/2)<1?n/2*e*e*e+t:n/2*((e-=2)*e*e+2)+t}}),w&&(S.version="3.0.2",S.setAutoScrolling=_,S.setRecordHistory=Q,S.setScrollingSpeed=J,S.setFitToSection=K,S.setLockAnchors=function(e){g.lockAnchors=e},S.setMouseWheelScrolling=q,S.setAllowScrolling=$,S.setKeyboardScrolling=te,S.moveSectionUp=ne,S.moveSectionDown=oe,S.silentMoveTo=re,S.moveTo=ie,S.moveSlideRight=le,S.moveSlideLeft=ae,S.fitToSection=be,S.reBuild=se,S.setResponsive=ce,S.getFullpageData=function(){return{options:g,internals:{container:w,canScroll:x,isScrollAllowed:d,getDestinationPosition:ke,isTouch:o,c:Fe,getXmovement:pt,removeAnimation:ft,getTransforms:kt,lazyLoad:je,addAnimation:ut,performHorizontalMove:at,landscapeScroll:rt,silentLandscapeScroll:Tt,keepSlidesPosition:Oe,silentScroll:Ot,styleSlides:pe,scrollHandler:Se,getEventsPage:Mt,getMSPointer:Lt,isReallyTouch:xe,usingExtension:Rt,toggleControlArrows:it,touchStartHandler:Ae,touchMoveHandler:Ee}}},S.destroy=function(e){eo(w,"destroy",e),_(!1,"internal"),$(!0),ee(!1),te(!1),Wn(w,Qt),clearTimeout(h),clearTimeout(p),clearTimeout(s),clearTimeout(A),clearTimeout(L),Vt.removeEventListener("scroll",Se),Vt.removeEventListener("hashchange",Qe),Vt.removeEventListener("resize",st),Zt.removeEventListener("keydown",Ke),Zt.removeEventListener("keyup",qe),["click","touchstart"].forEach(function(e){Zt.removeEventListener(e,ue)}),["mouseenter","touchstart","mouseleave","touchend"].forEach(function(e){Zt.removeEventListener(e,de,!0)}),Rt("dragAndMove")&&S.dragAndMove.destroy(),clearTimeout(h),clearTimeout(p),e&&(Ot(0),On("img[data-src], source[data-src], audio[data-src], iframe[data-src]",w).forEach(function(e){Ne(e,"src")}),On("img[data-srcset]").forEach(function(e){Ne(e,"srcset")}),ro(On(un+", "+yn+", "+xn)),Rn(On(nn),{height:"","background-color":"",padding:""}),Rn(On(vn),{width:""}),Rn(w,{height:"",position:"","-ms-touch-action":"","touch-action":""}),Rn(r,{overflow:"",height:""}),Xn(On("html"),Jt),Xn(m,Ut),m.className.split(/\s+/).forEach(function(e){0===e.indexOf(Kt)&&Xn(m,e)}),On(nn+", "+vn).forEach(function(e){g.scrollOverflowHandler&&g.scrollOverflow&&g.scrollOverflowHandler.remove(e),Xn(e,bn+" "+qt+" "+en);var t=e.getAttribute("data-fp-styles");t&&e.setAttribute("style",e.getAttribute("data-fp-styles")),Cn(e,tn)&&!z&&e.removeAttribute("data-anchor")}),Ht(w),[ln,Sn,gn].forEach(function(e){On(e,w).forEach(function(e){Fn(e)})}),Vt.scrollTo(0,0),[tn,dn,mn].forEach(function(e){Xn(On("."+e),e)}))},S.getActiveSection=function(){return new Wt(On(on)[0])},S.getActiveSlide=function(){return Ie(On(pn,On(on)[0])[0])},S.landscapeScroll=rt,S.test={top:"0px",translate3d:"translate3d(0px, 0px, 0px)",translate3dH:function(){for(var e=[],t=0;t<On(g.sectionSelector,w).length;t++)e.push("translate3d(0px, 0px, 0px)");return e}(),left:function(){for(var e=[],t=0;t<On(g.sectionSelector,w).length;t++)e.push(0);return e}(),options:g,setAutoScrolling:_},S.shared={afterRenderActions:me},Vt.fullpage_api=S,ve("continuousHorizontal"),ve("scrollHorizontally"),ve("resetSliders"),ve("interlockedSlides"),ve("responsiveSlides"),ve("fadingEffect"),ve("dragAndMove"),ve("offsetSections"),ve("scrollOverflowReset"),ve("parallax"),Rt("dragAndMove")&&S.dragAndMove.init(),g.css3&&(g.css3=function(){var e,t=Zt.createElement("p"),n={webkitTransform:"-webkit-transform",OTransform:"-o-transform",msTransform:"-ms-transform",MozTransform:"-moz-transform",transform:"transform"};for(var o in t.style.display="block",Zt.body.insertBefore(t,null),n)void 0!==t.style[o]&&(t.style[o]="translate3d(1px,1px,1px)",e=Vt.getComputedStyle(t).getPropertyValue(n[o]));return Zt.body.removeChild(t),void 0!==e&&0<e.length&&"none"!==e}()),g.scrollBar=g.scrollBar||g.hybrid,function(){if(!g.anchors.length){var e="[data-anchor]",t=On(g.sectionSelector.split(",").join(e+",")+e,w);t.length&&(z=!0,t.forEach(function(e){g.anchors.push(e.getAttribute("data-anchor").toString())}))}if(!g.navigationTooltips.length){var e="[data-tooltip]",n=On(g.sectionSelector.split(",").join(e+",")+e,w);n.length&&n.forEach(function(e){g.navigationTooltips.push(e.getAttribute("data-tooltip").toString())})}}(),function(){Rn(w,{height:"100%",position:"relative"}),Wn(w,Gt),Wn(On("html"),Jt),y=Hn(),Xn(w,Qt),Wn(On(g.sectionSelector,w),tn),Wn(On(g.slideSelector,w),dn),It("parallax","init");for(var e=On(nn),t=0;t<e.length;t++){var n=t,o=e[t],r=On(vn,o),i=r.length;o.setAttribute("data-fp-styles",o.getAttribute("style")),s=o,(c=n)||null!=On(on)[0]||Wn(s,qt),u=On(on)[0],Rn(s,{height:he(s)+"px"}),g.paddingTop&&Rn(s,{"padding-top":g.paddingTop}),g.paddingBottom&&Rn(s,{"padding-bottom":g.paddingBottom}),void 0!==g.sectionsColor[c]&&Rn(s,{"background-color":g.sectionsColor[c]}),void 0!==g.anchors[c]&&s.setAttribute("data-anchor",g.anchors[c]),l=o,a=n,void 0!==g.anchors[a]&&Cn(l,qt)&&dt(g.anchors[a],a),g.menu&&g.css3&&null!=Un(On(g.menu)[0],Ft)&&m.appendChild(On(g.menu)[0]),0<i?pe(o,r,i):g.verticalCentered&&ht(o)}var l,a,s,c;g.fixedElements&&g.css3&&On(g.fixedElements).forEach(function(e){m.appendChild(e)}),g.navigation&&function(){var e=Zt.createElement("div");e.setAttribute("id",cn);var t=Zt.createElement("ul");e.appendChild(t),Vn(e,m);var n=On(un)[0];Wn(n,"fp-"+g.navigationPosition),g.showActiveTooltip&&Wn(n,"fp-show-active");for(var o="",r=0;r<On(nn).length;r++){var i="";g.anchors.length&&(i=g.anchors[r]),o+='<li><a href="#'+i+'"><span class="fp-sr-only">'+ge(r,"Section")+"</span><span></span></a>";var l=g.navigationTooltips[r];void 0!==l&&""!==l&&(o+='<div class="'+fn+" fp-"+g.navigationPosition+'">'+l+"</div>"),o+="</li>"}On("ul",n)[0].innerHTML=o,Rn(On(un),{"margin-top":"-"+On(un)[0].offsetHeight/2+"px"}),Wn(On("a",On("li",On(un)[0])[Pn(On(on)[0],nn)]),qt)}(),On('iframe[src*="youtube.com/embed/"]',w).forEach(function(e){var t,n,o;n="enablejsapi=1",o=(t=e).getAttribute("src"),t.setAttribute("src",o+(/\?/.test(o)?"&":"?")+n)}),g.fadingEffect&&S.fadingEffect&&S.fadingEffect.apply(),g.scrollOverflow&&(v=g.scrollOverflowHandler.init(g))}(),$(!0),ee(!0),_(g.autoScrolling,"internal"),ct(),At(),"complete"===Zt.readyState&&_e(),Vt.addEventListener("load",_e),g.scrollOverflow||me(),Vt.addEventListener("scroll",Se),Vt.addEventListener("hashchange",Qe),Vt.addEventListener("blur",nt),Vt.addEventListener("resize",st),Zt.addEventListener("keydown",Ke),Zt.addEventListener("keyup",qe),["click","touchstart"].forEach(function(e){Zt.addEventListener(e,ue)}),g.normalScrollElements&&(["mouseenter","touchstart"].forEach(function(e){fe(e,!1)}),["mouseleave","touchend"].forEach(function(e){fe(e,!0)})),Rt("dragAndMove")&&S.dragAndMove.turnOffTouch());var N,j,P,Y=!1,D=0,W=0,X=0,V=0,Z=(new Date).getTime(),G=0,F=0,U=y;return S}function _(e,t){e||Ot(0),Nt("autoScrolling",e,t);var n=On(on)[0];if(g.autoScrolling&&!g.scrollBar)Rn(r,{overflow:"hidden",height:"100%"}),Q(I.recordHistory,"internal"),Rn(w,{"-ms-touch-action":"none","touch-action":"none"}),null!=n&&Ot(n.offsetTop);else if(Rn(r,{overflow:"visible",height:"initial"}),Q(!1,"internal"),Rn(w,{"-ms-touch-action":"","touch-action":""}),Ht(w),null!=n){var o=ze(n.offsetTop);o.element.scrollTo(0,o.options)}eo(w,"setAutoScrolling",e)}function Q(e,t){Nt("recordHistory",e,t)}function J(e,t){"internal"!==t&&g.fadingEffect&&S.fadingEffect&&S.fadingEffect.update(e),Nt("scrollingSpeed",e,t)}function K(e,t){Nt("fitToSection",e,t)}function q(e){e?(function(){var e,t="";Vt.addEventListener?e="addEventListener":(e="attachEvent",t="on");var n="onwheel"in Zt.createElement("div")?"wheel":void 0!==Zt.onmousewheel?"mousewheel":"DOMMouseScroll";"DOMMouseScroll"==n?Zt[e](t+"MozMousePixelScroll",Me,!1):Zt[e](t+n,Me,!1)}(),w.addEventListener("mousedown",$e),w.addEventListener("mouseup",et)):(Zt.addEventListener?(Zt.removeEventListener("mousewheel",Me,!1),Zt.removeEventListener("wheel",Me,!1),Zt.removeEventListener("MozMousePixelScroll",Me,!1)):Zt.detachEvent("onmousewheel",Me),w.removeEventListener("mousedown",$e),w.removeEventListener("mouseup",et))}function $(t,e){void 0!==e?(e=e.replace(/ /g,"").split(",")).forEach(function(e){Ct(t,e,"m")}):Ct(t,"all","m"),eo(w,"setAllowScrolling",{value:t,directions:e})}function ee(e){e?(q(!0),function(){if(n||o){g.autoScrolling&&(m.removeEventListener(C.touchmove,ye,{passive:!1}),m.addEventListener(C.touchmove,ye,{passive:!1}));var e=On(Ft)[0];e&&(e.removeEventListener(C.touchstart,Ae),e.removeEventListener(C.touchmove,Ee,{passive:!1}),e.addEventListener(C.touchstart,Ae),e.addEventListener(C.touchmove,Ee,{passive:!1}))}}()):(q(!1),function(){if(n||o){g.autoScrolling&&(m.removeEventListener(C.touchmove,Ee,{passive:!1}),m.removeEventListener(C.touchmove,ye,{passive:!1}));var e=On(Ft)[0];e&&(e.removeEventListener(C.touchstart,Ae),e.removeEventListener(C.touchmove,Ee,{passive:!1}))}}())}function te(t,e){void 0!==e?(e=e.replace(/ /g,"").split(",")).forEach(function(e){Ct(t,e,"k")}):(Ct(t,"all","k"),g.keyboardScrolling=t)}function ne(){var e=In(On(on)[0],nn);e||!g.loopTop&&!g.continuousVertical||(e=jn(On(nn))),null!=e&&Ce(e,null,!0)}function oe(){var e=zn(On(on)[0],nn);e||!g.loopBottom&&!g.continuousVertical||(e=On(nn)[0]),null!=e&&Ce(e,null,!1)}function re(e,t){J(0,"internal"),ie(e,t),J(I.scrollingSpeed,"internal")}function ie(e,t){var n=St(e);void 0!==t?bt(e,t):null!=n&&Ce(n)}function le(e){Te("right",e)}function ae(e){Te("left",e)}function se(e){if(!Cn(w,Qt)){E=!0,y=Hn();for(var t=On(nn),n=0;n<t.length;++n){var o=t[n],r=On(gn,o)[0],i=On(vn,o);g.verticalCentered&&Rn(On(ln,o),{height:gt(o)+"px"}),Rn(o,{height:he(o)+"px"}),1<i.length&&rt(r,On(pn,r)[0])}g.scrollOverflow&&v.createScrollBarForAll();var l=Pn(On(on)[0],nn);l&&!Rt("fadingEffect")&&re(l+1),E=!1,$n(g.afterResize)&&e&&g.afterResize.call(w,Vt.innerWidth,Vt.innerHeight),$n(g.afterReBuild)&&!e&&g.afterReBuild.call(w),eo(w,"afterRebuild")}}function ce(e){var t=Cn(m,Ut);e?t||(_(!1,"internal"),K(!1,"internal"),Yn(On(un)),Wn(m,Ut),$n(g.afterResponsive)&&g.afterResponsive.call(w,e),g.responsiveSlides&&S.responsiveSlides&&S.responsiveSlides.toSections(),eo(w,"afterResponsive",e),g.scrollOverflow&&v.createScrollBarForAll()):t&&(_(I.autoScrolling,"internal"),K(I.autoScrolling,"internal"),Dn(On(un)),Xn(m,Ut),$n(g.afterResponsive)&&g.afterResponsive.call(w,e),g.responsiveSlides&&S.responsiveSlides&&S.responsiveSlides.toSlides(),eo(w,"afterResponsive",e))}function ue(e){var t=e.target;t&&Un(t,un+" a")?function(e){qn(e);var t=Pn(Un(this,un+" li"));Ce(On(nn)[t])}.call(t,e):to(t,".fp-tooltip")?function(){eo(Bn(this),"click")}.call(t):to(t,xn)?function(){var e=Un(this,nn);Cn(this,An)?d.m.left&&ae(e):d.m.right&&le(e)}.call(t,e):to(t,En)||null!=Un(t,En)?function(e){qn(e);var t=On(gn,Un(this,nn))[0],n=On(vn,t)[Pn(Un(this,"li"))];rt(t,n)}.call(t,e):Un(t,g.menu+" [data-menuanchor]")&&function(e){!On(g.menu)[0]||!g.lockAnchors&&g.anchors.length||(qn(e),ie(this.getAttribute("data-menuanchor")))}.call(t,e)}function fe(e,t){Zt["fp_"+e]=t,Zt.addEventListener(e,de,!0)}function de(t){t.target!=Zt&&g.normalScrollElements.split(",").forEach(function(e){null!=Un(t.target,e)&&ee(Zt["fp_"+t.type])})}function ve(e){var t="fp_"+e+"Extension";B[e]=g[e+"Key"],S[e]=void 0!==Vt[t]?new Vt[t]:null,S[e]&&S[e].c(e)}function pe(e,t,n){var o=100*n,r=100/n,i=Zt.createElement("div");i.className=hn,Zn(t,i);var l,a,s=Zt.createElement("div");s.className=mn,Zn(t,s),Rn(On(Sn,e),{width:o+"%"}),1<n&&(g.controlArrows&&(l=e,a=[oo('<div class="fp-controlArrow fp-prev"></div>'),oo('<div class="fp-controlArrow fp-next"></div>')],_n(On(gn,l)[0],a),"#fff"!==g.controlArrowColor&&(Rn(On(Mn,l),{"border-color":"transparent transparent transparent "+g.controlArrowColor}),Rn(On(Ln,l),{"border-color":"transparent "+g.controlArrowColor+" transparent transparent"})),g.loopHorizontal||Yn(On(Ln,l))),g.slidesNavigation&&function(e,t){Vn(oo('<div class="'+wn+'"><ul></ul></div>'),e);var n=On(yn,e)[0];Wn(n,"fp-"+g.slidesNavPosition);for(var o=0;o<t;o++)Vn(oo('<li><a href="#"><span class="fp-sr-only">'+ge(o,"Slide")+"</span><span></span></a></li>"),On("ul",n)[0]);Rn(n,{"margin-left":"-"+n.innerWidth/2+"px"}),Wn(On("a",On("li",n)[0]),qt)}(e,n)),t.forEach(function(e){Rn(e,{width:r+"%"}),g.verticalCentered&&ht(e)});var c=On(pn,e)[0];null!=c&&(0!==Pn(On(on),nn)||0===Pn(On(on),nn)&&0!==Pn(c))?(Tt(c,"internal"),Wn(c,"fp-initial")):Wn(t[0],qt)}function he(e){return g.offsetSections&&S.offsetSections?Math.round(S.offsetSections.getWindowHeight(e)):Hn()}function ge(e,t){return g.navigationTooltips[e]||g.anchors[e]||t+" "+(e+1)}function me(){var e,t=On(on)[0];Wn(t,en),je(t),Pe(t),g.scrollOverflow&&g.scrollOverflowHandler.afterLoad(),(!(e=St(Je().section))||void 0!==e&&Pn(e)===Pn(u))&&$n(g.afterLoad)&&He("afterLoad",{activeSection:null,element:t,direction:null,anchorLink:t.getAttribute("data-anchor"),sectionIndex:Pn(t,nn)}),$n(g.afterRender)&&He("afterRender"),eo(w,"afterRender")}function Se(){var e;if(eo(w,"onScroll"),(!g.autoScrolling||g.scrollBar||Rt("dragAndMove"))&&!Bt()){var t=Rt("dragAndMove")?Math.abs(S.dragAndMove.getCurrentScroll()):Jn(),n=0,o=t+Hn()/2,r=(Rt("dragAndMove")?S.dragAndMove.getDocumentHeight():m.offsetHeight-Hn())===t,i=On(nn);if(r)n=i.length-1;else if(t)for(var l=0;l<i.length;++l)i[l].offsetTop<=o&&(n=l);else n=0;if(!Cn(e=i[n],qt)){Y=!0;var a,s,c=On(on)[0],u=Pn(c,nn)+1,f=vt(e),d=e.getAttribute("data-anchor"),v=Pn(e,nn)+1,p=On(pn,e)[0],h={activeSection:c,sectionIndex:v-1,anchorLink:d,element:e,leavingSection:u,direction:f};p&&(s=p.getAttribute("data-anchor"),a=Pn(p)),x&&(Wn(e,qt),Xn(Kn(e),qt),It("parallax","afterLoad"),$n(g.onLeave)&&He("onLeave",h),$n(g.afterLoad)&&He("afterLoad",h),g.resetSliders&&S.resetSliders&&S.resetSliders.apply({localIsResizing:E,leavingSection:u}),De(c),je(e),Pe(e),dt(d,v-1),g.anchors.length&&(b=d),yt(a,s,d)),clearTimeout(A),A=setTimeout(function(){Y=!1},100)}g.fitToSection&&(clearTimeout(L),L=setTimeout(function(){g.fitToSection&&On(on)[0].offsetHeight<=y&&be()},g.fitToSectionDelay))}}function be(){x&&(E=!0,Ce(On(on)[0]),E=!1)}function we(e){if(d.m[e]){var t="down"===e?oe:ne;if(S.scrollHorizontally&&(t=S.scrollHorizontally.getScrollSection(e,t)),g.scrollOverflow){var n=g.scrollOverflowHandler.scrollable(On(on)[0]),o="down"===e?"bottom":"top";if(null!=n){if(!g.scrollOverflowHandler.isScrolled(o,n))return!0;t()}else t()}else t()}}function ye(e){g.autoScrolling&&xe(e)&&qn(e)}function Ee(e){var t=Un(e.target,nn);if(xe(e)){g.autoScrolling&&qn(e);var n=Mt(e);X=n.y,V=n.x,On(gn,t).length&&Math.abs(W-V)>Math.abs(D-X)?!a&&Math.abs(W-V)>Vt.innerWidth/100*g.touchSensitivity&&(V<W?d.m.right&&le(t):d.m.left&&ae(t)):g.autoScrolling&&x&&Math.abs(D-X)>Vt.innerHeight/100*g.touchSensitivity&&(X<D?we("down"):D<X&&we("up"))}}function xe(e){return void 0===e.pointerType||"mouse"!=e.pointerType}function Ae(e){if(g.fitToSection&&(O=!1),xe(e)){var t=Mt(e);D=t.y,W=t.x}}function Le(e,t){for(var n=0,o=e.slice(Math.max(e.length-t,1)),r=0;r<o.length;r++)n+=o[r];return Math.ceil(n/t)}function Me(e){var t=(new Date).getTime(),n=Cn(On(".fp-completely")[0],sn);if(!d.m.down&&!d.m.up)return qn(e),!1;if(g.autoScrolling&&!c&&!n){var o=(e=e||Vt.event).wheelDelta||-e.deltaY||-e.detail,r=Math.max(-1,Math.min(1,o)),i=void 0!==e.wheelDeltaX||void 0!==e.deltaX,l=Math.abs(e.wheelDeltaX)<Math.abs(e.wheelDelta)||Math.abs(e.deltaX)<Math.abs(e.deltaY)||!i;149<f.length&&f.shift(),f.push(Math.abs(o)),g.scrollBar&&qn(e);var a=t-Z;if(Z=t,200<a&&(f=[]),x&&!zt()){var s=Le(f,10);Le(f,70)<=s&&l&&we(r<0?"down":"up")}return!1}g.fitToSection&&(O=!1)}function Te(e,t){var n=null==t?On(on)[0]:t,o=On(gn,n)[0];if(!(null==o||zt()||a||On(vn,o).length<2)){var r=On(pn,o)[0],i=null;if(null==(i="left"===e?In(r,vn):zn(r,vn))){if(!g.loopHorizontal)return;var l=Kn(r);i="left"===e?l[l.length-1]:l[0]}a=!S.test.isTesting,rt(o,i,e)}}function Oe(){for(var e=On(pn),t=0;t<e.length;t++)Tt(e[t],"internal")}function ke(e){var t=e.offsetHeight,n=e.offsetTop,o=n,r=Rt("dragAndMove")&&S.dragAndMove.isGrabbing?S.dragAndMove.isScrollingDown():G<n,i=o-y+t,l=g.bigSectionsDestination;return y<t?(r||l)&&"bottom"!==l||(o=i):(r||E&&null==Nn(e))&&(o=i),g.offsetSections&&S.offsetSections&&(o=S.offsetSections.getSectionPosition(r,o,e)),G=o}function Ce(e,t,n){if(null!=e){var o,r,i={element:e,callback:t,isMovementUp:n,dtop:ke(e),yMovement:vt(e),anchorLink:e.getAttribute("data-anchor"),sectionIndex:Pn(e,nn),activeSlide:On(pn,e)[0],activeSection:On(on)[0],leavingSection:Pn(On(on),nn)+1,localIsResizing:E};if(!(i.activeSection==e&&!E||g.scrollBar&&Jn()===i.dtop&&!Cn(e,an))){if(null!=i.activeSlide&&(o=i.activeSlide.getAttribute("data-anchor"),r=Pn(i.activeSlide)),!i.localIsResizing){var l=i.yMovement;if(void 0!==n&&(l=n?"up":"down"),i.direction=l,$n(g.onLeave)&&!1===He("onLeave",i))return}var a;It("parallax","apply",i),g.autoScrolling&&g.continuousVertical&&void 0!==i.isMovementUp&&(!i.isMovementUp&&"up"==i.yMovement||i.isMovementUp&&"down"==i.yMovement)&&((s=i).isMovementUp?Qn(On(on)[0],io(s.activeSection,nn)):_n(On(on)[0],lo(s.activeSection,nn).reverse()),Ot(On(on)[0].offsetTop),Oe(),s.wrapAroundElements=s.activeSection,s.dtop=s.element.offsetTop,s.yMovement=vt(s.element),s.leavingSection=Pn(s.activeSection,nn)+1,s.sectionIndex=Pn(s.element,nn),eo(On(Ft)[0],"onContinuousVertical",s),i=s),Rt("scrollOverflowReset")&&S.scrollOverflowReset.setPrevious(i.activeSection),i.localIsResizing||De(i.activeSection),g.scrollOverflow&&g.scrollOverflowHandler.beforeLeave(),Wn(e,qt),Xn(Kn(e),qt),je(e),g.scrollOverflow&&g.scrollOverflowHandler.onLeave(),x=S.test.isTesting,yt(r,o,i.anchorLink,i.sectionIndex),function(e){if(g.css3&&g.autoScrolling&&!g.scrollBar){var t="translate3d(0px, -"+Math.round(e.dtop)+"px, 0px)";mt(t,!0),g.scrollingSpeed?(clearTimeout(p),p=setTimeout(function(){Be(e)},g.scrollingSpeed)):Be(e)}else{var n=ze(e.dtop);S.test.top=-e.dtop+"px",Pt(n.element,n.options,g.scrollingSpeed,function(){g.scrollBar?setTimeout(function(){Be(e)},30):Be(e)})}}(i),b=i.anchorLink,dt(i.anchorLink,null==(a=i).wrapAroundElements?a.sectionIndex:a.isMovementUp?On(nn).length-1:0)}}var s}function He(e,t){var n,o,r,i,l=(o=e,r=t,(i=g.v2compatible?{afterRender:function(){return[w]},onLeave:function(){return[r.activeSection,r.leavingSection,r.sectionIndex+1,r.direction]},afterLoad:function(){return[r.element,r.anchorLink,r.sectionIndex+1]},afterSlideLoad:function(){return[r.destiny,r.anchorLink,r.sectionIndex+1,r.slideAnchor,r.slideIndex]},onSlideLeave:function(){return[r.prevSlide,r.anchorLink,r.sectionIndex+1,r.prevSlideIndex,r.direction,r.slideIndex]}}:{afterRender:function(){return{section:Re(On(on)[0]),slide:Ie(On(pn,On(on)[0])[0])}},onLeave:function(){return{origin:Re(r.activeSection),destination:Re(r.element),direction:r.direction}},afterLoad:function(){return i.onLeave()},afterSlideLoad:function(){return{section:Re(r.section),origin:Ie(r.prevSlide),destination:Ie(r.destiny),direction:r.direction}},onSlideLeave:function(){return i.afterSlideLoad()}})[o]());if(g.v2compatible){if(!1===g[e].apply(l[0],l.slice(1)))return!1}else if(eo(w,e,l),!1===g[e].apply(l[Object.keys(l)[0]],(n=l,Object.keys(n).map(function(e){return n[e]}))))return!1;return!0}function Re(e){return e?new Wt(e):null}function Ie(e){return e?new Xt(e):null}function ze(e){var t={};return g.autoScrolling&&!g.scrollBar?(t.options=-e,t.element=On(Ft)[0]):(t.options=e,t.element=Vt),t}function Be(e){var t;null!=(t=e).wrapAroundElements&&(t.isMovementUp?Qn(On(nn)[0],t.wrapAroundElements):_n(On(nn)[On(nn).length-1],t.wrapAroundElements),Ot(On(on)[0].offsetTop),Oe(),t.sectionIndex=Pn(t.element,nn),t.leavingSection=Pn(t.activeSection,nn)+1),$n(g.afterLoad)&&!e.localIsResizing&&He("afterLoad",e),g.scrollOverflow&&g.scrollOverflowHandler.afterLoad(),It("parallax","afterLoad"),Rt("scrollOverflowReset")&&S.scrollOverflowReset.reset(),Rt("resetSliders")&&S.resetSliders.apply(e),e.localIsResizing||Pe(e.element),Wn(e.element,en),Xn(Kn(e.element),en),x=!0,$n(e.callback)&&e.callback()}function Ne(e,t){e.setAttribute(t,e.getAttribute("data-"+t)),e.removeAttribute("data-"+t)}function je(e){g.lazyLoading&&On("img[data-src], img[data-srcset], source[data-src], source[data-srcset], video[data-src], audio[data-src], iframe[data-src]",We(e)).forEach(function(n){if(["src","srcset"].forEach(function(e){var t=n.getAttribute("data-"+e);null!=t&&t&&Ne(n,e)}),to(n,"source")){var e=Un(n,"video, audio");e&&e.load()}})}function Pe(e){var t=We(e);On("video, audio",t).forEach(function(e){e.hasAttribute("data-autoplay")&&"function"==typeof e.play&&e.play()}),On('iframe[src*="youtube.com/embed/"]',t).forEach(function(e){e.hasAttribute("data-autoplay")&&Ye(e),e.onload=function(){e.hasAttribute("data-autoplay")&&Ye(e)}})}function Ye(e){e.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}',"*")}function De(e){var t=We(e);On("video, audio",t).forEach(function(e){e.hasAttribute("data-keepplaying")||"function"!=typeof e.pause||e.pause()}),On('iframe[src*="youtube.com/embed/"]',t).forEach(function(e){/youtube\.com\/embed\//.test(e.getAttribute("src"))&&!e.hasAttribute("data-keepplaying")&&e.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}',"*")})}function We(e){var t=On(pn,e);return t.length&&(e=t[0]),e}function Xe(e){var c="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";function o(e){var t,n,o,r,i,l,a="",s=0;for(e=e.replace(/[^A-Za-z0-9+/=]/g,"");s<e.length;)t=c.indexOf(e.charAt(s++))<<2|(r=c.indexOf(e.charAt(s++)))>>4,n=(15&r)<<4|(i=c.indexOf(e.charAt(s++)))>>2,o=(3&i)<<6|(l=c.indexOf(e.charAt(s++))),a+=String.fromCharCode(t),64!=i&&(a+=String.fromCharCode(n)),64!=l&&(a+=String.fromCharCode(o));return a=function(e){for(var t,n="",o=0,r=0,i=0;o<e.length;)(r=e.charCodeAt(o))<128?(n+=String.fromCharCode(r),o++):191<r&&r<224?(i=e.charCodeAt(o+1),n+=String.fromCharCode((31&r)<<6|63&i),o+=2):(i=e.charCodeAt(o+1),t=e.charCodeAt(o+2),n+=String.fromCharCode((15&r)<<12|(63&i)<<6|63&t),o+=3);return n}(a)}function r(e){return e.slice(3).slice(0,-3)}return function(e){var t=e.split("_");if(1<t.length){var n=t[1];return e.replace(r(t[1]),"").split("_")[0]+"_"+o(n.slice(3).slice(0,-3))}return r(e)}(o(e))}function Ve(e){var t=function(){if(Zt.domain.length){for(var e=Zt.domain.replace(/^(www\.)/,"").split(".");2<e.length;)e.shift();return e.join(".").replace(/(^\.*)|(\.*$)/g,"")}return""}(),n=["MTM0bG9jYWxob3N0MjM0","MTM0MC4xMjM0","MTM0anNoZWxsLm5ldDIzNA==","UDdDQU5ZNlNN"],o=Xe(n[0]),r=Xe(n[1]),i=Xe(n[2]),l=Xe(n[3]),a=[o,r,i].indexOf(t)<0&&0!==t.length,s=void 0!==B[e]&&B[e].length;if(!s&&a)return!1;var c=s?Xe(B[e]):"",u=1<(c=c.split("_")).length&&-1<c[1].indexOf(e,c[1].length-e.length);return!(c[0].indexOf(t,c[0].length-t.length)<0&&a&&l!=c[0])&&u||!a}function Ze(e){e.forEach(function(e){e.removedNodes[0]&&e.removedNodes[0].isEqualNode(j)&&(clearTimeout(P),P=setTimeout(Ge,900))})}function Ge(){H=!1}function Fe(e){j=Zt.createElement("div"),N=Xe("MTIzPGRpdj48YSBocmVmPSJodHRwOi8vYWx2YXJvdHJpZ28uY29tL2Z1bGxQYWdlL2V4dGVuc2lvbnMvIiBzdHlsZT0iY29sb3I6ICNmZmYgIWltcG9ydGFudDsgdGV4dC1kZWNvcmF0aW9uOm5vbmUgIWltcG9ydGFudDsiPlVubGljZW5zZWQgZnVsbFBhZ2UuanMgRXh0ZW5zaW9uPC9hPjwvZGl2PjEyMw=="),j.innerHTML=N,j=j.firstChild,"MutationObserver"in Vt&&new MutationObserver(Ze).observe(Zt.body,{childList:!0,subtree:!1}),Rt(e)&&S[e]&&(Ve(e)||(Ue(),setInterval(Ue,2e3)))}function Ue(){j&&(H||(Math.random()<.5?ao(m,j):Vn(j,m),H=!0),j.setAttribute("style",Xe("MTIzei1pbmRleDo5OTk5OTk5O3Bvc2l0aW9uOmZpeGVkO3RvcDoyMHB4O2JvdHRvbTphdXRvO2xlZnQ6MjBweDtyaWdodDphdXRvO2JhY2tncm91bmQ6cmVkO3BhZGRpbmc6N3B4IDE1cHg7Zm9udC1zaXplOjE0cHg7Zm9udC1mYW1pbHk6YXJpYWw7Y29sb3I6I2ZmZjtkaXNwbGF5OmlubGluZS1ibG9jazt0cmFuc2Zvcm06dHJhbnNsYXRlM2QoMCwwLDApO29wYWNpdHk6MTtoZWlnaHQ6YXV0bzt3aWR0aDphdXRvO3pvb206MTttYXJnaW46YXV0bztib3JkZXI6bm9uZTt2aXNpYmlsaXR5OnZpc2libGU7Y2xpcC1wYXRoOm5vbmU7MTIz").replace(/;/g,Xe("MTIzICFpbXBvcnRhbnQ7MzQ1"))))}function _e(){var e=Je(),t=e.section,n=e.slide;t&&(g.animateAnchor?bt(t,n):re(t,n))}function Qe(){if(!Y&&!g.lockAnchors){var e=Je(),t=e.section,n=e.slide,o=void 0===b,r=void 0===b&&void 0===n&&!a;t&&t.length&&(t&&t!==b&&!o||r||!a&&i!=n)&&bt(t,n)}}function Je(){var e,t,n=Vt.location.hash;if(n.length){var o=n.replace("#","").split("/"),r=-1<n.indexOf("#/");e=r?"/"+o[1]:decodeURIComponent(o[0]);var i=r?o[2]:o[1];i&&i.length&&(t=decodeURIComponent(i))}return{section:e,slide:t}}function Ke(e){clearTimeout(M);var t=Zt.activeElement,n=e.keyCode;9===n?function(e){var t,n,o,r,i,l,a,s=e.shiftKey,c=Zt.activeElement,u=tt(We(On(on)[0]));function f(e){return qn(e),u[0]?u[0].focus():null}(t=e,n=tt(Zt),o=n.indexOf(Zt.activeElement),r=t.shiftKey?o-1:o+1,i=n[r],l=Ie(Un(i,vn)),a=Re(Un(i,nn)),l||a)&&(c?null==Un(c,on+","+on+" "+pn)&&(c=f(e)):f(e),(!s&&c==u[u.length-1]||s&&c==u[0])&&qn(e))}(e):to(t,"textarea")||to(t,"input")||to(t,"select")||"true"===t.getAttribute("contentEditable")||""===t.getAttribute("contentEditable")||!g.keyboardScrolling||!g.autoScrolling||(-1<[40,38,32,33,34].indexOf(n)&&qn(e),c=e.ctrlKey,M=setTimeout(function(){!function(e){var t=e.shiftKey;if(x||!([37,39].indexOf(e.keyCode)<0))switch(e.keyCode){case 38:case 33:d.k.up&&ne();break;case 32:if(t&&d.k.up){ne();break}case 40:case 34:d.k.down&&oe();break;case 36:d.k.up&&ie(1);break;case 35:d.k.down&&ie(On(nn).length);break;case 37:d.k.left&&ae();break;case 39:d.k.right&&le()}}(e)},150))}function qe(e){l&&(c=e.ctrlKey)}function $e(e){2==e.which&&(F=e.pageY,w.addEventListener("mousemove",ot))}function et(e){2==e.which&&w.removeEventListener("mousemove",ot)}function tt(e){return[].slice.call(On(R,e)).filter(function(e){return"-1"!==e.getAttribute("tabindex")&&null!==e.offsetParent})}function nt(){c=l=!1}function ot(e){x&&(e.pageY<F&&d.m.up?ne():e.pageY>F&&d.m.down&&oe()),F=e.pageY}function rt(e,t,n){var o=Un(e,nn),r={slides:e,destiny:t,direction:n,destinyPos:{left:t.offsetLeft},slideIndex:Pn(t),section:o,sectionIndex:Pn(o,nn),anchorLink:o.getAttribute("data-anchor"),slidesNav:On(yn,o)[0],slideAnchor:xt(t),prevSlide:On(pn,o)[0],prevSlideIndex:Pn(On(pn,o)[0]),localIsResizing:E};r.xMovement=pt(r.prevSlideIndex,r.slideIndex),r.localIsResizing||(x=!1),It("parallax","applyHorizontal",r),g.onSlideLeave&&!r.localIsResizing&&"none"!==r.xMovement&&$n(g.onSlideLeave)&&!1===He("onSlideLeave",r)?a=!1:(Wn(t,qt),Xn(Kn(t),qt),r.localIsResizing||(De(r.prevSlide),je(t)),it(r),Cn(o,qt)&&!r.localIsResizing&&yt(r.slideIndex,r.slideAnchor,r.anchorLink,r.sectionIndex),S.continuousHorizontal&&S.continuousHorizontal.apply(r),Bt()?lt(r):at(e,r,!0),g.interlockedSlides&&S.interlockedSlides&&(Rt("continuousHorizontal")&&void 0!==n&&n!==r.xMovement||S.interlockedSlides.apply(r)))}function it(e){!g.loopHorizontal&&g.controlArrows&&(no(On(Ln,e.section),0!==e.slideIndex),no(On(Mn,e.section),null!=Nn(e.destiny)))}function lt(e){var t,n;S.continuousHorizontal&&S.continuousHorizontal.afterSlideLoads(e),t=e.slidesNav,n=e.slideIndex,g.slidesNavigation&&null!=t&&(Xn(On($t,t),qt),Wn(On("a",On("li",t)[n]),qt)),e.localIsResizing||(It("parallax","afterSlideLoads"),$n(g.afterSlideLoad)&&He("afterSlideLoad",e),x=!0,Pe(e.destiny)),a=!1,Rt("interlockedSlides")&&S.interlockedSlides.apply(e)}function at(e,t,n){var o=t.destinyPos;if(g.css3){var r="translate3d(-"+Math.round(o.left)+"px, 0px, 0px)";S.test.translate3dH[t.sectionIndex]=r,Rn(ut(On(Sn,e)),kt(r)),h=setTimeout(function(){n&&lt(t)},g.scrollingSpeed)}else S.test.left[t.sectionIndex]=Math.round(o.left),Pt(e,Math.round(o.left),g.scrollingSpeed,function(){n&&lt(t)})}function st(){if(eo(w,"onResize"),ct(),n){var e=Zt.activeElement;if(!to(e,"textarea")&&!to(e,"input")&&!to(e,"select")){var t=Hn();Math.abs(t-U)>20*Math.max(U,t)/100&&(s=setTimeout(function(){se(!0),U=t},navigator.userAgent.match("CriOS")?50:0))}}else clearTimeout(s),s=setTimeout(function(){se(!0)},350)}function ct(){var e=g.responsive||g.responsiveWidth,t=g.responsiveHeight,n=e&&Vt.innerWidth<e,o=t&&Vt.innerHeight<t;e&&t?ce(n||o):e?ce(n):t&&ce(o)}function ut(e){var t="all "+g.scrollingSpeed+"ms "+g.easingcss3;return Xn(e,_t),Rn(e,{"-webkit-transition":t,transition:t})}function ft(e){return Wn(e,_t)}function dt(e,t){var n,o,r,i;n=e,o=On(g.menu)[0],g.menu&&null!=o&&(Xn(On($t,o),qt),Wn(On('[data-menuanchor="'+n+'"]',o),qt)),r=e,i=t,g.navigation&&null!=On(un)[0]&&(Xn(On($t,On(un)[0]),qt),Wn(r?On('a[href="#'+r+'"]',On(un)[0]):On("a",On("li",On(un)[0])[i]),qt))}function vt(e){var t=Pn(On(on)[0],nn),n=Pn(e,nn);return t==n?"none":n<t?"up":"down"}function pt(e,t){return e==t?"none":t<e?"left":"right"}function ht(e){if(!Cn(e,bn)){var t=Zt.createElement("div");t.className=rn,t.style.height=gt(e)+"px",Wn(e,bn),Gn(e,t)}}function gt(e){var t=he(e);if(g.paddingTop||g.paddingBottom){var n=e;Cn(n,tn)||(n=Un(e,nn)),t-=parseInt(getComputedStyle(n)["padding-top"])+parseInt(getComputedStyle(n)["padding-bottom"])}return t}function mt(e,t){t?ut(w):ft(w),clearTimeout(T),Rn(w,kt(e)),S.test.translate3d=e,T=setTimeout(function(){Xn(w,_t)},10)}function St(e){var t=On(nn+'[data-anchor="'+e+'"]',w)[0];if(!t){var n=void 0!==e?e-1:0;t=On(nn)[n]}return t}function bt(e,t){var n=St(e);if(null!=n){var o,r,i,l=(null==(i=On(vn+'[data-anchor="'+(o=t)+'"]',r=n)[0])&&(o=void 0!==o?o:0,i=On(vn,r)[o]),i);xt(n)===b||Cn(n,qt)?wt(l):Ce(n,function(){wt(l)})}}function wt(e){null!=e&&rt(Un(e,gn),e)}function yt(e,t,n,o){var r="";g.anchors.length&&!g.lockAnchors&&(e?(null!=n&&(r=n),null==t&&(t=e),Et(r+"/"+(i=t))):(null!=e&&(i=t),Et(n))),At()}function Et(e){if(g.recordHistory)location.hash=e;else if(n||o)Vt.history.replaceState(void 0,void 0,"#"+e);else{var t=Vt.location.href.split("#")[0];Vt.location.replace(t+"#"+e)}}function xt(e){if(!e)return null;var t=e.getAttribute("data-anchor"),n=Pn(e);return null==t&&(t=n),t}function At(){var e=On(on)[0],t=On(pn,e)[0],n=xt(e),o=xt(t),r=String(n);t&&(r=r+"-"+o),r=r.replace("/","-").replace("#","");var i=new RegExp("\\b\\s?"+Kt+"-[^\\s]+\\b","g");m.className=m.className.replace(i,""),Wn(m,Kt+"-"+r)}function Lt(){return Vt.PointerEvent?{down:"pointerdown",move:"pointermove"}:{down:"MSPointerDown",move:"MSPointerMove"}}function Mt(e){var t=[];return t.y=void 0!==e.pageY&&(e.pageY||e.pageX)?e.pageY:e.touches[0].pageY,t.x=void 0!==e.pageX&&(e.pageY||e.pageX)?e.pageX:e.touches[0].pageX,o&&xe(e)&&g.scrollBar&&void 0!==e.touches&&(t.y=e.touches[0].pageY,t.x=e.touches[0].pageX),t}function Tt(e,t){J(0,"internal"),void 0!==t&&(E=!0),rt(Un(e,gn),e),void 0!==t&&(E=!1),J(I.scrollingSpeed,"internal")}function Ot(e){var t=Math.round(e);if(g.css3&&g.autoScrolling&&!g.scrollBar)mt("translate3d(0px, -"+t+"px, 0px)",!1);else if(g.autoScrolling&&!g.scrollBar)Rn(w,{top:-t+"px"}),S.test.top=-t+"px";else{var n=ze(t);Yt(n.element,n.options)}}function kt(e){return{"-webkit-transform":e,"-moz-transform":e,"-ms-transform":e,transform:e}}function Ct(t,e,n){"all"!==e?d[n][e]=t:Object.keys(d[n]).forEach(function(e){d[n][e]=t})}function Ht(e){return Rn(e,{"-webkit-transition":"none",transition:"none"})}function Rt(e){return null!==g[e]&&"[object Array]"===Object.prototype.toString.call(g[e])?g[e].length&&S[e]:g[e]&&S[e]}function It(e,t,n){if(Rt(e))return S[e][t](n)}function zt(){return Rt("dragAndMove")&&S.dragAndMove.isAnimating}function Bt(){return Rt("dragAndMove")&&S.dragAndMove.isGrabbing}function Nt(e,t,n){g[e]=t,"internal"!==n&&(I[e]=t)}function jt(){t||(Tn("error","Fullpage.js version 3 has changed its license to GPLv3 and it requires a `licenseKey` option. Read about it here:"),Tn("error","https://github.com/alvarotrigo/fullPage.js#options.")),Cn(On("html"),Jt)?Tn("error","Fullpage.js can only be initialized once and you are doing it multiple times!"):(g.continuousVertical&&(g.loopTop||g.loopBottom)&&(g.continuousVertical=!1,Tn("warn","Option `loopTop/loopBottom` is mutually exclusive with `continuousVertical`; `continuousVertical` disabled")),!g.scrollOverflow||!g.scrollBar&&g.autoScrolling||Tn("warn","Options scrollBar:true and autoScrolling:false are mutually exclusive with scrollOverflow:true. Sections with scrollOverflow might not work well in Firefox"),!g.continuousVertical||!g.scrollBar&&g.autoScrolling||(g.continuousVertical=!1,Tn("warn","Scroll bars (`scrollBar:true` or `autoScrolling:false`) are mutually exclusive with `continuousVertical`; `continuousVertical` disabled")),g.scrollOverflow&&null==g.scrollOverflowHandler&&(g.scrollOverflow=!1,Tn("error","The option `scrollOverflow:true` requires the file `scrolloverflow.min.js`. Please include it before fullPage.js.")),g.anchors.forEach(function(t){var e=[].slice.call(On("[name]")).filter(function(e){return e.getAttribute("name")&&e.getAttribute("name").toLowerCase()==t.toLowerCase()}),n=[].slice.call(On("[id]")).filter(function(e){return e.getAttribute("id")&&e.getAttribute("id").toLowerCase()==t.toLowerCase()});(n.length||e.length)&&(Tn("error","data-anchor tags can not have the same value as any `id` element on the site (or `name` element for IE)."),n.length&&Tn("error",'"'+t+'" is is being used by another element `id` property'),e.length&&Tn("error",'"'+t+'" is is being used by another element `name` property'))}))}function Pt(t,n,o,r){var e,i=(e=t).self!=Vt&&Cn(e,hn)?e.scrollLeft:!g.autoScrolling||g.scrollBar?Jn():e.offsetTop,l=n-i,a=0;O=!0;var s=function(){if(O){var e=n;a+=20,o&&(e=Vt.fp_easings[g.easing](a,i,l,o)),Yt(t,e),a<o?setTimeout(s,20):void 0!==r&&r()}else a<o&&r()};s()}function Yt(e,t){!g.autoScrolling||g.scrollBar||e.self!=Vt&&Cn(e,hn)?e.self!=Vt&&Cn(e,hn)?e.scrollLeft=t:e.scrollTo(0,t):e.style.top=t+"px"}function Dt(e,t){this.anchor=e.getAttribute("data-anchor"),this.item=e,this.index=Pn(e,t),this.isLast=this.index===e.parentElement.querySelectorAll(t).length-1,this.isFirst=!this.index}function Wt(e){Dt.call(this,e,nn)}function Xt(e){Dt.call(this,e,vn)}jt()}}),window.jQuery&&window.fullpage&&function(n,o){"use strict";n&&o?n.fn.fullpage=function(e){var t=new o(this[0],e);Object.keys(t).forEach(function(e){n.fn.fullpage[e]=t[e]})}:window.fp_utils.showError("error","jQuery is required to use the jQuery fullpage adapter!")}(window.jQuery,window.fullpage);
 $(document).ready(function() {
 	$('#fullpage').fullpage({
 		anchors:['title','projects','skills'],
+		sectionsColor: ['', '#3a3a3a', '#002a5e'],
 		lockAnchors:true,
-		autoScrolling:true,
-		navigation: true,
+		autoScrolling: true,
 		loopBottom: true,
-		controlArrows:false,
+		controlArrows: false,
 		verticalCentered: true,
-		licenseKey: 'OPEN-SOURCE-GPLV3-LICENSE'
+		scrollingSpeed: 850,
+		navigation: true,
+		navigationTooltips: ['Title', 'Projects', 'Skills'],
+		showActiveTooltip: true,
+		licenseKey: 'AA5B0793-878946C9-AD56A913-DD44D5FC',
+		afterRender: function () { //defined in this block for compatibility with fullpage
+			$('.lightbox_image').magnificPopup({type:'iframe'});
+		}
 	});
 	
 	$.fn.fullpage.setAllowScrolling(true);
+});
 
-	$(document).on('click', '#back', function(){ //for the project partial back button
-    	var slide = $('.fp-section.active').find('.slide.active');
-    	$.fn.fullpage.moveSlideLeft();
-    	
-    	setTimeout(function(){
-        	slide.remove();
-    	},700);
-	});
+$(document).on('click', '#project_back', function(){ //for the project layout back button
+	var slide = $('.fp-section.active').find('.slide.active');
+	$.fn.fullpage.moveSlideLeft();
+    setTimeout(function(){
+    	slide.remove();
+    },700);
+});
+
+$(document).on('click', '#back_title', function(){
+	$.fn.fullpage.moveSlideLeft();
+});
+
+$(document).on('click', '#features', function(){
+	$.fn.fullpage.moveSlideRight();
+});
+
+$(document).on('click', '#title_down', function(){
+	$.fn.fullpage.moveSectionDown();
 });
 (function() {
 
@@ -19670,6 +17612,7 @@ $(document).ready(function() {
 // Read Sprockets README (https://github.com/rails/sprockets#sprockets-directives) for details
 // about supported directives.
 //
+
 
 
 
