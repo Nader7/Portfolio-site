@@ -1,19 +1,19 @@
+<div class="row vertical-align">
+	<h1 class="slide_title">Zorkish</h1>
+</div>
+<br / ><br />
 <div class="row">
-	<div class="col-lg-12">
-		<h3 class="slide_title"> Text Adventure Game </h3>
+	<p class="readable_text">
+		This independent project which implements many core aspects of game development was built in c++ without that use of a game development library. <br />
+		It incorporates the component pattern for each of its entities, uses a game state machine, loads the entire world from a configuration file as well as each location into a graph data structure, has a built in messaging system and implements a robust command processing pattern. <br /> 
+		The game contains several locations, items, enemies and was completed using an object oriented style with a heavy emphasis on inheritance and polymorphism
+	</p>
+	<br />
+	<div class="readable_text">View the source code for this project
+		<%= link_to " here", "https://github.com/Nader7/Zorkish", id: "zork_git_link", target: :_blank%>
 	</div>
 </div>
 <br /><br />
-<div class="row">
-	<div class="col-lg-12">
-		<p class="readable_text">
-			This independent project which implements many core aspects of game development was built in c++ without that use of a game development library. <br />
-			It incorporates the component pattern for each of its entities, uses a game state machine, loads the entire world from a configuration file as well as each location into a graph data structure, has a built in messaging system and implements a robust command processing pattern. <br /> 
-			The game contains several locations, items, enemies and was completed using an object oriented style with a heavy emphasis on inheritance and polymorphism
-		</p>
-		<br />
-		<div class="readable_text">View the source code for this project
-			<%= link_to " here", "https://github.com/Nader7/Zorkish", id: "zork_git_link", target: :_blank%>
-		</div>
-	</div>
+<div class="row vertical-align">
+	<%= link_to image_tag("home/zorkish_thumb", width: "300", alt: "zorkish", class: "project_image"), "/assets/home/zorkish.webp", class: "lightbox_image center-block", target: :_blank%>
 </div>

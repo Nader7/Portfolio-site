@@ -19,72 +19,21 @@
 		<%= render partial: 'upcoming_features'%>
 		<%= image_tag "home/down_arrow", alt: "arrow", id: "title_down", class: "button"%>
 	</div>
-	
-	<div id="section2" class="section">
-		<div class="slide">
-			<div class="container">
-				<div class="row">
-					<div class="col-lg-12">
-						<h1 class="slide_title"> Notable Projects </h1>
-					</div>
-				</div>
-				
-				<br /><br /><br />
-				<div class="row vertical-align">
-					<div class="col-lg-4 text-right">
-						<%= link_to image_tag("home/data_thumb", width: "225", alt: "database", class: "project_image"), posts_path(:project => "posts/index"), remote:true %>
-					</div>
-					<div class="col-lg-8">
-						<div>
-							<%= link_to 'Database Management (Demo)', posts_path(:project => "posts/index"), class:"project_link", remote:true %>
-							<p class="readable_text">A database managment interface. Click above for a live demo!</p>
-						</div>
-					</div>
-				</div>
-				<br /><br />
-				<div class="row vertical-align">
-					<div class="col-lg-4 text-right">
-						<%= link_to image_tag("home/bionic_thumb", width: "225", alt: "bionic", class: "project_image"), "https://www.youtube.com/watch?v=RSJ4y_w6BVo", class: "lightbox_image", target: :_blank %>
-					</div>
-					<div class="col-lg-8 ">
-						<div>
-							<%= link_to 'Bionic Vision Simulator', 
-								projects_path(:project => "bionic"), class:"project_link", remote:true %>
-							<p class="readable_text">A virtual reality program which simulates the functionality of an implant being developed by Bionic Vision Australia. We created it to aid in research for finding the ideal image processing algorithms for the implant. Click above for further info!</p>
-						</div>
-					</div>
-				</div>
-				<br /><br />
-				<div class="row vertical-align">
-					<div class="col-lg-4 text-right">
-						<%= link_to image_tag("home/energy_thumb", width: "225", alt: "energy", class: "project_image"), "https://www.youtube.com/watch?v=A1qC8rh03IE", class: "lightbox_image", target: :_blank %>
-					</div>
-					<div class="col-lg-8">
-						<div>
-							<%= link_to 'Home Energy Trading System', 
-								projects_path(:project => "energy"), class:"project_link", remote:true %>
-							<p class="readable_text">A multi intelligent agent system which autonomously calculates hourly energy needs for a home and negotiates price based on a budget. Click above for further info!</p>
-						</div>
-					</div>
-				</div> 
-				<br / ><br />
-				<div class="row vertical-align">
-					<div class="col-lg-4 text-right">
-						<%= link_to image_tag("home/zorkish_thumb", width: "225", alt: "zorkish", class: "project_image"), "/assets/home/zorkish.webp", class: "lightbox_image", target: :_blank%>
-					</div>
-					<div class="col-lg-8">
-						<div>
-							<%= link_to 'Zorkish', 
-								projects_path(:project => "game"), class:"project_link", remote:true %>
-							<p class="readable_text">A Zork like text adventure game built in c++ without the use of libraries. Click above for further info!</p>
-						</div>
-					</div>
-				</div>
-			</div>
+	<div class="section">
+		<div class="container">
+			<%= render partial: 'bionic' %>
 		</div>
-		<div id="project"></div>
 	</div>
-
+	<div class="section">
+		<div class="container">
+			<%= render partial: 'energy' %>
+		</div>
+	</div>
+	<div class="section">
+		<div class="container">
+			<%= render partial: 'game' %>
+		</div>
+	</div>
 	<div id="section3" class="section">
 		<%= render 'skills'%>
 	</div>

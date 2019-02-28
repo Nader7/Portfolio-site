@@ -10,7 +10,7 @@
 	src: url('NexaDemo-Bold.otf') format('truetype');
 }
 
-#section1 { 
+body { 
   background-image: url(home/title_background.webp);
   background-position: fixed;
 }
@@ -81,9 +81,8 @@
 	color: #110887;
 }
 .slide_title{
-	text-align: center;
 	color: white;
-	font-family: 'adam';
+	font-family: 'nexa';
 	font-size: 3vw;
 }
 .features_text{

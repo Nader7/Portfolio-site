@@ -13,5 +13,5 @@ Rails.application.config.assets.paths << Rails.root.join('node_modules')
 # folder are already added.
 # Rails.application.config.assets.precompile += %w( admin.js admin.css )
 Rails.application.config.assets.precompile += %w( fullpage.extensions.min.js fullpage.min.css )
-Rails.application.config.assets.precompile += %w( page_scroll.js )
-Rails.application.config.assets.precompile += %w( projects.js.erb )
+Rails.application.config.assets.precompile += %w( home.js )
+Rails.application.config.assets.precompile += %w( scrolloverflow.min.js )
