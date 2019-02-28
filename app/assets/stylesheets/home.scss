@@ -18,15 +18,15 @@
 	font-family: 'nexa';
 }
 #bionic_section{
-	background-image: url(home/bionic_back.webp);
+	background-image: url(home/bionic_background.webp);
   	background-position: fixed;
 }
 #energy_section{
-	background-image: url(home/energy_alt.webp);
+	background-image: url(home/energy_background.webp);
   	background-position: fixed;
 }
 #zorkish_section{
-	background-image: url(home/zork.webp);
+	background-image: url(home/zorkish_background.webp);
   	background-position: fixed;
 }
 .dark_text{
@@ -37,6 +37,14 @@
 	color: black;
 	font-family: 'nexa';
 	font-size: 3vw;
+}
+.features_text{
+	color: white;
+	font-size: 1.2vw;
+}
+.readable_text{
+	color: white;
+	font-size: 0.9vw;
 }
 #title_name{
 	position: absolute;
@@ -104,18 +112,6 @@
 	color: white;
 	font-family: 'nexa';
 	font-size: 3vw;
-}
-.features_text{
-	color: white;
-	font-size: 1.2vw;
-}
-.readable_text{
-	color: white;
-	font-size: 0.9vw;
-}
-.skills_text{
-	color: white;
-	font-size: 0.9vw;
 }
 .back_button{
 	color: white;
