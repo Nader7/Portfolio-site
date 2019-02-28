@@ -9,14 +9,34 @@
 	font-family: 'nexa';
 	src: url('NexaDemo-Bold.otf') format('truetype');
 }
-
-body { 
-  background-image: url(home/title_background.webp);
-  background-position: fixed;
-}
-#title_section{
-	font-family: 'nexa';
+#title_section, #skills_section{
+	background-image: url(home/title_background.webp);
+  	background-position: fixed;
 	color: white;
+}
+#title_page{
+	font-family: 'nexa';
+}
+#bionic_section{
+	background-image: url(home/bionic_back.webp);
+  	background-position: fixed;
+}
+#energy_section{
+	background-image: url(home/energy_alt.webp);
+  	background-position: fixed;
+}
+#zorkish_section{
+	background-image: url(home/zork.webp);
+  	background-position: fixed;
+}
+.dark_text{
+	color: black;
+	font-size: 0.9vw;
+}
+.dark_title{
+	color: black;
+	font-family: 'nexa';
+	font-size: 3vw;
 }
 #title_name{
 	position: absolute;
@@ -90,6 +110,10 @@ body {
 	font-size: 1.2vw;
 }
 .readable_text{
+	color: white;
+	font-size: 0.9vw;
+}
+.skills_text{
 	color: white;
 	font-size: 0.9vw;
 }

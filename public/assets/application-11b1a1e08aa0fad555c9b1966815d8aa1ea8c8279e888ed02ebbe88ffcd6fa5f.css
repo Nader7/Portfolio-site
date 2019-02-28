@@ -6,19 +6,50 @@
   font-family: 'nexa';
   src: url("NexaDemo-Bold.otf") format("truetype");
 }
-/* line 13, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
-body {
+/* line 12, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+#title_section, #skills_section {
   background-image: url(home/title_background.webp);
   background-position: fixed;
-}
-
-/* line 17, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
-#title_section {
-  font-family: 'nexa';
   color: white;
 }
 
-/* line 21, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 17, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+#title_page {
+  font-family: 'nexa';
+}
+
+/* line 20, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+#bionic_section {
+  background-image: url(home/bionic_back.png);
+  background-position: fixed;
+}
+
+/* line 24, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+#energy_section {
+  background-image: url(home/energy_alt.png);
+  background-position: fixed;
+}
+
+/* line 28, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+#zorkish_section {
+  background-image: url(home/zork.png);
+  background-position: fixed;
+}
+
+/* line 32, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+.dark_text {
+  color: black;
+  font-size: 0.9vw;
+}
+
+/* line 36, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+.dark_title {
+  color: black;
+  font-family: 'nexa';
+  font-size: 3vw;
+}
+
+/* line 41, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 #title_name {
   position: absolute;
   top: 20vh;
@@ -26,7 +57,7 @@ body {
   font-size: 8vw;
 }
 
-/* line 27, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 47, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 #title_skill {
   position: absolute;
   top: 40vh;
@@ -34,7 +65,7 @@ body {
   font-size: 4vw;
 }
 
-/* line 33, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 53, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 .notification {
   position: relative;
   top: 6.5%;
@@ -42,7 +73,7 @@ body {
   font-size: 1.25vw;
 }
 
-/* line 39, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 59, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 #title_down {
   position: absolute;
   width: 5vw;
@@ -52,7 +83,7 @@ body {
   opacity: 0.7;
 }
 
-/* line 47, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 67, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 #notification_background {
   position: absolute;
   width: 30vw;
@@ -63,7 +94,7 @@ body {
   background: rgba(209, 11, 11, 0.85);
 }
 
-/* line 56, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 76, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 #git_text_background {
   position: absolute;
   width: 30vw;
@@ -74,7 +105,7 @@ body {
   background: rgba(10, 57, 115, 0.85);
 }
 
-/* line 65, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 85, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 .git_text {
   position: relative;
   top: 25%;
@@ -82,44 +113,50 @@ body {
   font-size: 1.25vw;
 }
 
-/* line 71, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 91, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 #git_link {
   text-decoration: none;
   color: #110887;
 }
 
-/* line 75, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 95, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 #zork_git_link {
   text-decoration: none;
   color: #2424d9;
 }
 
-/* line 79, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 99, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 #features {
   cursor: pointer;
   color: #110887;
 }
 
-/* line 83, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 103, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 .slide_title {
   color: white;
   font-family: 'nexa';
   font-size: 3vw;
 }
 
-/* line 88, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 108, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 .features_text {
   color: white;
   font-size: 1.2vw;
 }
 
-/* line 92, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 112, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 .readable_text {
   color: white;
   font-size: 0.9vw;
 }
 
-/* line 96, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 116, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+.skills_text {
+  color: white;
+  font-size: 0.9vw;
+}
+
+/* line 120, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 .back_button {
   color: white;
   font-size: 1.5vw;
@@ -127,29 +164,29 @@ body {
   cursor: pointer;
 }
 
-/* line 102, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 126, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 .project_link {
   font-size: 1.75vw;
   color: white;
 }
 
-/* line 106, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 130, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 .project_image {
   border-radius: 5px;
 }
 
-/* line 110, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 134, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 .vertical-align {
   display: flex;
   align-items: center;
 }
 
-/* line 114, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 138, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 .button {
   cursor: pointer;
 }
 
-/* line 117, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
+/* line 141, C:/Users/Michael Nader/Documents/RAILS WEBSITE/portfolio/app/assets/stylesheets/home.scss */
 #fp-nav ul li a span {
   background-color: white !important;
 }
