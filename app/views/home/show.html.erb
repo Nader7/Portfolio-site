@@ -13,6 +13,11 @@
 		
 		<%= image_tag "home/down_arrow", alt: "arrow", id: "title_down", class: "button"%>
 	</div>
+	<div id="exp_section" class="section">
+		<div class="container">
+			<%= render 'experience' %>
+		</div>
+	</div>
 	<div id="bionic_section" class="section">
 		<div class="container">
 			<%= render 'bionic' %>
@@ -30,5 +35,10 @@
 	</div>
 	<div id="skills_section" class="section">
 		<%= render 'skills'%>
+	</div>
+	<div id="edu_section" class="section">
+		<div class="container">
+			<%= render 'education'%>
+		</div>
 	</div>
 </div>

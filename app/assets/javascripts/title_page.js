@@ -8,7 +8,7 @@ $(document).ready(function() {
 		verticalCentered: true,
 		scrollingSpeed: 850,
 		navigation: true,
-		navigationTooltips: ['Title', 'Bionic Sim', 'Energy System', 'Zorkish', 'Skills'],
+		navigationTooltips: ['Title', 'Experience', 'Bionic Sim', 'Energy System', 'Zorkish', 'Skills', 'Education'],
 		showActiveTooltip: true,
 		scrollOverflow: true,
 		licenseKey: 'AA5B0793-878946C9-AD56A913-DD44D5FC',

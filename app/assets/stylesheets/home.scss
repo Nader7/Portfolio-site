@@ -9,7 +9,7 @@
 	font-family: 'nexa';
 	src: url('NexaDemo-Bold.otf') format('truetype');
 }
-#title_section, #skills_section{
+#title_section, #skills_section, #edu_section, #exp_section{
 	background-image: url(home/title_background.webp);
   	background-position: fixed;
 	color: white;
@@ -29,6 +29,9 @@
 	background-image: url(home/zorkish_background.webp);
   	background-position: fixed;
 }
+#pro_skill{
+	color: #5caddb;
+}
 .dark_text{
 	color: black;
 	font-size: 1.1vw;
@@ -39,6 +42,10 @@
 	font-size: 3.25vw;
 }
 .features_text{
+	color: white;
+	font-size: 1.2vw;
+}
+.readable_title_point{
 	color: white;
 	font-size: 1.2vw;
 }
@@ -98,11 +105,11 @@
 }
 #git_link{
 	text-decoration: none;
-	color: #110887;
+	color: #238ce8;
 }
 #zork_git_link{
 	text-decoration: none;
-	color: #2424d9;
+	color: #238ce8;
 }
 #features{
 	cursor: pointer;
